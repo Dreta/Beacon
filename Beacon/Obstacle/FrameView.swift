@@ -3,6 +3,7 @@ import SwiftUI
 struct FrameView: View {
     var image: CGImage?
     var boundingBoxes: [CGRect] = []
+    var objectDepths: [Float] = []
     
     private let label = Text("Frame");
 
@@ -14,7 +15,7 @@ struct FrameView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: geometry.size.width, height: geometry.size.height)
-                    BoundingBoxView(boundingBoxes: boundingBoxes, frameSize: geometry.size)
+                    BoundingBoxView(boundingBoxes: boundingBoxes, objectDepths: objectDepths, frameSize: geometry.size)
                 }
             } else {
                 VStack {
