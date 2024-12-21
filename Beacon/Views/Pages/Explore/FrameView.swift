@@ -19,9 +19,9 @@ struct FrameView: View {
                             if let selected = selected {
                                 let rect = boundingBoxRect(normalizedRect: selected.boundingBox, in: geo.size)
                                 ZStack(alignment: .topLeading) {
-                                    // Highlight the detected object
                                     RoundedRectangle(cornerRadius: 20)
                                         .stroke(.yellow, lineWidth: 2)
+                                        .fill(.yellow.opacity(0.2))
                                         .frame(width: rect.width, height: rect.height)
                                         .position(x: rect.midX, y: rect.midY)
                                 }
@@ -42,7 +42,7 @@ struct FrameView: View {
                                         .font(.subheadline)
                                 }
                                 .padding()
-                                .background(Color.black.opacity(0.7))
+                                .background(.ultraThinMaterial)
                                 .cornerRadius(16)
                                 .foregroundColor(.white)
                             }
