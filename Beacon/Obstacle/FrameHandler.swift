@@ -86,14 +86,14 @@ class FrameHandler: NSObject, ObservableObject {
             captureSession.addOutput(depthDataOutput)
             
             // Synchronize depth with video, if possible
-            if let connection = depthDataOutput.connection(with: .depthData), connection.isVideoOrientationSupported {
-                connection.videoOrientation = .portrait
+            if let connection = depthDataOutput.connection(with: .depthData), connection.isVideoRotationAngleSupported(90) {
+                connection.videoRotationAngle = 90
             }
             
             // Match the depth format to video format if possible
             if let depthConnection = depthDataOutput.connection(with: .depthData),
                let videoConnection = videoOutput.connection(with: .video) {
-                depthConnection.videoOrientation = videoConnection.videoOrientation
+                depthConnection.videoRotationAngle = videoConnection.videoRotationAngle
             }
         }
         
