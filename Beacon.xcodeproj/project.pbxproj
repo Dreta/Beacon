@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B8C7AEB92D1659FF001CC638 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = B8C7AEB82D1659FF001CC638 /* .gitignore */; };
 		B8ECE4C82CFF3EBC00EBEE87 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = B8ECE4C72CFF3EBA00EBEE87 /* README.md */; };
 /* End PBXBuildFile section */
 
@@ -31,6 +32,7 @@
 		B8B1DEF12CFF012D0001B5F1 /* Beacon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Beacon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B8B1DF012CFF012F0001B5F1 /* BeaconTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BeaconTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B8B1DF0B2CFF012F0001B5F1 /* BeaconUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BeaconUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B8C7AEB82D1659FF001CC638 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		B8ECE4C72CFF3EBA00EBEE87 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -70,6 +72,7 @@
 		B8B1DEE82CFF012D0001B5F1 = {
 			isa = PBXGroup;
 			children = (
+				B8C7AEB82D1659FF001CC638 /* .gitignore */,
 				B8ECE4C72CFF3EBA00EBEE87 /* README.md */,
 				B8B1DEF32CFF012D0001B5F1 /* Beacon */,
 				B8B1DEF22CFF012D0001B5F1 /* Products */,
@@ -200,6 +203,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B8C7AEB92D1659FF001CC638 /* .gitignore in Resources */,
 				B8ECE4C82CFF3EBC00EBEE87 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
