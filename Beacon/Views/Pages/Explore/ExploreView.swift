@@ -4,7 +4,7 @@ struct ExploreView: View {
     @StateObject private var model = FrameHandler()
     
     var body: some View {
-        FrameView(model: model)
+        FrameView(image: model.frame, detections: model.detectedObjects)
             .onAppear {
                 model.checkPermissionAndStart()
             }

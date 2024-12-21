@@ -9,6 +9,7 @@ class FrameHandler: NSObject, ObservableObject {
     
     private var permissionGranted = false
     private let captureSession = AVCaptureSession()
+    private var captureSessionReady = false
     private let sessionQueue = DispatchQueue(label: "sessionQueue")
     private let context = CIContext()
     private let detectionHandler = ObjectDetectionHandler()
@@ -25,8 +26,11 @@ class FrameHandler: NSObject, ObservableObject {
         case .authorized:
             permissionGranted = true
             sessionQueue.async { [unowned self] in
-                self.setupCaptureSession()
+                if !captureSessionReady {
+                    self.setupCaptureSession()
+                }
                 self.captureSession.startRunning()
+                print("Capture session started")
             }
         case .notDetermined:
             requestPermissionAndStart()
@@ -110,6 +114,7 @@ class FrameHandler: NSObject, ObservableObject {
         }
         
         captureSession.commitConfiguration()
+        captureSessionReady = true
     }
     
     // Approximate depth for each detected object
@@ -159,7 +164,7 @@ class FrameHandler: NSObject, ObservableObject {
 extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let cgImage = imageFromSampleBuffer(sampleBuffer: sampleBuffer) else { return }
-        
+
         DispatchQueue.main.async { [unowned self] in
             self.frame = cgImage
         }

@@ -1,19 +1,20 @@
 import SwiftUI
 
 struct FrameView: View {
-    var model: FrameHandler?
+    var image: CGImage?
+    var detections: [DetectedObject] = []
     private let label = Text("Frame")
     
     var body: some View {
         ZStack {
-            if let model = model, let image = model.frame {
+            if let image = image {
                 Image(image, scale: 1.0, orientation: .up, label: label)
                     .resizable()
                     .scaledToFill()
                     .ignoresSafeArea()
                     .overlay(
                         GeometryReader { geo in
-                            ForEach(model.detectedObjects) { detection in
+                            ForEach(detections) { detection in
                                 let rect = boundingBoxRect(normalizedRect: detection.boundingBox, in: geo.size)
                                 ZStack(alignment: .topLeading) {
                                     Rectangle()
@@ -40,7 +41,7 @@ struct FrameView: View {
                     )
             } else {
                 VStack {
-                    Text("To use obstacle detection and depth, please allow camera access in Settings.")
+                    Text("To use Explore, please allow camera access in Settings.")
                         .multilineTextAlignment(.center)
                         .font(.body)
                     Button("Open Settings") {
@@ -60,8 +61,4 @@ struct FrameView: View {
         let y = (1 - normalizedRect.maxY) * size.height
         return CGRect(x: x, y: y, width: width, height: height)
     }
-}
-
-#Preview {
-    FrameView()
 }
