@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ContentView: View {
+struct NavigateView: View {
     @ObservedObject var model = RouteHelper()
     @State private var startText: String = ""
     @State private var endText: String = ""
@@ -32,5 +32,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    NavigateView()
 }

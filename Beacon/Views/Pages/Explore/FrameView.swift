@@ -1,20 +1,19 @@
 import SwiftUI
 
 struct FrameView: View {
-    var image: CGImage?
-    var detections: [DetectedObject] = []
+    var model: FrameHandler?
     private let label = Text("Frame")
     
     var body: some View {
         ZStack {
-            if let image = image {
+            if let model = model, let image = model.frame {
                 Image(image, scale: 1.0, orientation: .up, label: label)
                     .resizable()
                     .scaledToFill()
                     .ignoresSafeArea()
                     .overlay(
                         GeometryReader { geo in
-                            ForEach(detections) { detection in
+                            ForEach(model.detectedObjects) { detection in
                                 let rect = boundingBoxRect(normalizedRect: detection.boundingBox, in: geo.size)
                                 ZStack(alignment: .topLeading) {
                                     Rectangle()
@@ -47,8 +46,9 @@ struct FrameView: View {
                     Button("Open Settings") {
                         UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent)
                 }
+                .padding()
             }
         }
     }

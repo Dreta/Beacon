@@ -18,7 +18,6 @@ class FrameHandler: NSObject, ObservableObject {
     
     override init() {
         super.init()
-        checkPermissionAndStart()
     }
     
     func checkPermissionAndStart() {
@@ -34,6 +33,19 @@ class FrameHandler: NSObject, ObservableObject {
         default:
             permissionGranted = false
         }
+    }
+    
+    func stop() {
+        sessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            if self.captureSession.isRunning {
+                self.captureSession.stopRunning()
+            }
+        }
+    }
+    
+    deinit {
+        stop()
     }
     
     func requestPermissionAndStart() {
