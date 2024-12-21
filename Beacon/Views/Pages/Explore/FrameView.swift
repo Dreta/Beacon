@@ -1,8 +1,10 @@
 import SwiftUI
 
+import SwiftUI
+
 struct FrameView: View {
     var image: CGImage?
-    var detections: [DetectedObject] = []
+    var selected: DetectedObject?
     private let label = Text("Frame")
     
     var body: some View {
@@ -14,30 +16,39 @@ struct FrameView: View {
                     .ignoresSafeArea()
                     .overlay(
                         GeometryReader { geo in
-                            ForEach(detections) { detection in
-                                let rect = boundingBoxRect(normalizedRect: detection.boundingBox, in: geo.size)
+                            if let selected = selected {
+                                let rect = boundingBoxRect(normalizedRect: selected.boundingBox, in: geo.size)
                                 ZStack(alignment: .topLeading) {
-                                    Rectangle()
-                                        .stroke(Color.red, lineWidth: 2)
+                                    // Highlight the detected object
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .stroke(.yellow, lineWidth: 2)
                                         .frame(width: rect.width, height: rect.height)
                                         .position(x: rect.midX, y: rect.midY)
-                                    
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("\(detection.label) \(Int(detection.confidence * 100))%")
-                                        if let depth = detection.depth {
-                                            Text(String(format: "Depth: %.2f m", depth))
-                                        } else {
-                                            Text("Depth: N/A")
-                                        }
-                                    }
-                                    .font(.caption)
-                                    .foregroundColor(.white)
-                                    .padding(4)
-                                    .background(Color.black.opacity(0.7))
-                                    .offset(x: rect.minX, y: rect.minY)
                                 }
                             }
                         }
+                    )
+                    .overlay(
+                        VStack {
+                            if let selected = selected {
+                                VStack(alignment: .center, spacing: 4) {
+                                    Text("\(selected.label)".capitalized(with: .current))
+                                        .font(.headline)
+                                    if let depth = selected.depth {
+                                        Text(String(format: "Depth: %.2f m", depth))
+                                            .font(.subheadline)
+                                    }
+                                    Text("\(Int(selected.confidence * 100))%")
+                                        .font(.subheadline)
+                                }
+                                .padding()
+                                .background(Color.black.opacity(0.7))
+                                .cornerRadius(16)
+                                .foregroundColor(.white)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .padding(.bottom, 20)
                     )
             } else {
                 VStack {
