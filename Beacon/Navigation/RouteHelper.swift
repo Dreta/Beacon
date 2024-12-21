@@ -1,41 +1,83 @@
 import MapKit
+import Combine
 
-class RouteHelper: NSObject,MKLocalSearchCompleterDelegate,ObservableObject {
-    
+class RouteHelper: NSObject, ObservableObject {
     @Published var routeStr = ""
-    let completer = MKLocalSearchCompleter()
     let distanceFormatter = MKDistanceFormatter()
-    
-    
-    func route(){
-        let request = MKDirections.Request()
+    private var cancellables = Set<AnyCancellable>()
+
+    func calculateRoute(from start: String, to end: String) {
         
-        request.source = MKMapItem(placemark: MKPlacemark(coordinate: CLLocationCoordinate2D(latitude: 39.983603, longitude: 116.411707), addressDictionary: nil))
-        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: CLLocationCoordinate2D(latitude: 39.913414, longitude: 116.197072), addressDictionary: nil))
+        self.routeStr = "Searching...\n"
+        
+        //搜索地理坐标
+        searchLocation(query: start)
+            .zip(searchLocation(query: end))
+            .sink { completion in
+                //错误处理
+                if case .failure(let error) = completion {
+                    self.routeStr = "Location Search Error：\(error.localizedDescription)"
+                }
+            } receiveValue: { startItem, endItem in
+                self.route(from: startItem, to: endItem)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func route(from startItem: MKMapItem, to endItem: MKMapItem) {
+        let request = MKDirections.Request()
+        request.source = startItem
+        request.destination = endItem
         request.requestsAlternateRoutes = true
-        request.transportType = .automobile //先试试机动车
+        
+        //先定义为automobile之后在改别的
+        request.transportType = .automobile
         
         let directions = MKDirections(request: request)
-        
-        var rs = "Result:\n"
-        directions.calculate { [unowned self] response, error in
+        directions.calculate { [weak self] response, error in
+            guard let self = self else { return }
+            
+            //报错信息
             guard let mapRoute = response?.routes.first else {
-                print("error:\(String(describing: error))")
+                self.routeStr = "Cannot find route：\(error?.localizedDescription ?? "Unknown Error")"
                 return
             }
-            rs = rs + "Distance:\(mapRoute.distance)"+"m"+"\n"
-            rs = rs + "ExpectedTravelTime:\(mapRoute.expectedTravelTime)"+"s"+"\n"
             
-            var index = 0
+            var rs = "Route Result:\n"
+            rs += "Distances: \(mapRoute.distance)m\n"
+            rs += "Estimated Time: \(mapRoute.expectedTravelTime)seconds\n"
+            
+            var i = 0
             for step in mapRoute.steps {
-                index+=1
-                rs = rs + "\(index): \(step.notice ?? step.instructions)"+"\n"
-                rs = rs + distanceFormatter.string(fromDistance: step.distance)+"\n"
+                i += 1
+                rs += "\(i): \(step.notice ?? step.instructions)\n"
+                rs += "    \(self.distanceFormatter.string(fromDistance: step.distance))\n"
             }
-            print(rs)
-            self.routeStr = rs
+            
+            //主线程刷新
+            DispatchQueue.main.async {
+                self.routeStr = rs
+            }
+        }
+    }
+
+    private func searchLocation(query: String) -> Future<MKMapItem, Error> {
+        return Future { promise in
+            let request = MKLocalSearch.Request()
+            request.naturalLanguageQuery = query
+            let search = MKLocalSearch(request: request)
+            search.start { response, error in
+                if let error = error {
+                    promise(.failure(error))
+                    return
+                }
+                
+                guard let mapItem = response?.mapItems.first else {
+                    promise(.failure(NSError(domain: "NoResult", code: -1, userInfo: [NSLocalizedDescriptionKey: "No Result for \(query)"])))
+                    return
+                }
+                promise(.success(mapItem))
+            }
         }
     }
 }
-
-

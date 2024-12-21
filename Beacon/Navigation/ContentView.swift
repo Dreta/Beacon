@@ -1,22 +1,33 @@
 import SwiftUI
 
-let routerHelper = RouteHelper()
 struct ContentView: View {
-    @ObservedObject var model = routerHelper
+    @ObservedObject var model = RouteHelper()
+    @State private var startText: String = ""
+    @State private var endText: String = ""
+    
     var body: some View {
-        
-        Text("起点:苹果园（39.983603，116.411707）")
-        Text("终点:古城（39.913414，116.197072）")
-        Divider()
-        Button("计算"){
-            model.route()
+        VStack {
+            VStack(alignment: .leading) {
+                Text("Enter Start and End Points then press Calculate")
+                TextField("Start Point", text: $startText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding([.top, .bottom], 5)
+                TextField("End Point", text: $endText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                
+                Button("Calculate") {
+                    model.calculateRoute(from: startText, to: endText)
+                }
+            }.padding()
+
+            Divider()
             
+            ScrollView {
+                Text(model.routeStr)
+                    .padding()
+            }
         }
-        Divider()
-        ScrollView{
-            Text(self.model.routeStr)
-            
-        }
+        .padding()
     }
 }
 
