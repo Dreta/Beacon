@@ -3,20 +3,20 @@ import SwiftUI
 import SwiftUI
 
 struct FrameView: View {
-    var image: CGImage?
-    var selected: DetectedObject?
+    @StateObject var model: FrameHandler
     private let label = Text("Frame")
     
     var body: some View {
         ZStack {
-            if let image = image {
+            let _ = print("model.frame: \(String(describing: model.frame))")
+            if let image = model.frame {
                 Image(image, scale: 1.0, orientation: .up, label: label)
                     .resizable()
                     .scaledToFill()
                     .ignoresSafeArea()
                     .overlay(
                         GeometryReader { geo in
-                            if let selected = selected {
+                            if let selected = model.selectedObject {
                                 let rect = boundingBoxRect(normalizedRect: selected.boundingBox, in: geo.size)
                                 ZStack(alignment: .topLeading) {
                                     RoundedRectangle(cornerRadius: 20)
@@ -30,7 +30,7 @@ struct FrameView: View {
                     )
                     .overlay(
                         VStack {
-                            if let selected = selected {
+                            if let selected = model.selectedObject {
                                 VStack(alignment: .center, spacing: 4) {
                                     Text("\(selected.label)".capitalized(with: .current))
                                         .font(.headline)
@@ -47,8 +47,26 @@ struct FrameView: View {
                                 .foregroundColor(.white)
                             }
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                        .padding(.bottom, 20)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .padding(.top)
+                    )
+                    .overlay(
+                        VStack {
+                            HStack {
+                                Button(action: {
+                                    // Add button action here
+                                    print("Button tapped!")
+                                }) {
+                                    Image(systemName: "gear")
+                                        .foregroundColor(.white)
+                                        .frame(width: 44, height: 44)
+                                        .background(Circle().fill(.background))
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical)
+                            .background(.ultraThinMaterial)
+                        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     )
             } else {
                 VStack {

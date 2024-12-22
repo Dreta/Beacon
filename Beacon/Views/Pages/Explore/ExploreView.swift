@@ -4,7 +4,7 @@ struct ExploreView: View {
     @StateObject private var model = FrameHandler()
     
     var body: some View {
-        FrameView(image: model.frame, selected: model.selectedObject)
+        FrameView(model: model)
             .onAppear {
                 model.checkPermissionAndStart()
                 UIApplication.shared.isIdleTimerDisabled = true
