@@ -3,6 +3,7 @@ import SwiftUI
 struct NavigateView: View {
     @ObservedObject var model = RouteHelper()
     @ObservedObject var locationManager = LocationManager()
+    @StateObject var realTimeNavigator = RealTimeNavigator()
     @State var isUpdating = false
     @State private var startText: String = ""
     @State private var endText: String = ""
@@ -10,6 +11,12 @@ struct NavigateView: View {
     var body: some View {
         VStack {
             VStack {
+                Text(realTimeNavigator.instruction)
+                    .font(.headline)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.yellow.opacity(0.2))
+                
                 Text("lat: \(locationManager.location.latitude), long: \(locationManager.location.longitude)")
                 
                 if !isUpdating {
@@ -43,6 +50,15 @@ struct NavigateView: View {
             }
         }
         .padding()
+        .onAppear() {
+            model.$currentRoute
+                .sink { [weak realTimeNavigator] route in
+                    guard let route = route else { return }
+                    realTimeNavigator?.route = route
+                }
+                .store(in: &realTimeNavigator.cancellables)
+
+        }
     }
 }
 

@@ -3,6 +3,10 @@ import Combine
 
 class RouteHelper: NSObject, ObservableObject {
     @Published var routeStr = ""
+    
+    //新增实时路径
+    @Published var currentRoute: MKRoute? = nil
+    
     let distanceFormatter = MKDistanceFormatter()
     private var cancellables = Set<AnyCancellable>()
 
@@ -41,6 +45,11 @@ class RouteHelper: NSObject, ObservableObject {
             guard let mapRoute = response?.routes.first else {
                 self.routeStr = "Cannot find route：\(error?.localizedDescription ?? "Unknown Error")"
                 return
+            }
+            
+            //保存路线
+            DispatchQueue.main.async {
+                self.currentRoute = mapRoute
             }
             
             var rs = "Route Result:\n"
