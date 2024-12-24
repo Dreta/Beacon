@@ -20,7 +20,6 @@ class RealTimeNavigator: NSObject, ObservableObject {
     private var currentStepIndex = 0
     private var steps: [MKRoute.Step] = []
 
-    // 给 SwiftUI 界面展示的文字
     @Published var instruction: String = "No instruction"
     
     // 距离下一个转弯多少米时更新提示，阈值可以根据需求调整

@@ -57,6 +57,7 @@ struct NavigateView: View {
                     realTimeNavigator?.route = route
                 }
                 .store(in: &realTimeNavigator.cancellables)
+            locationManager.realTimeNavigator = realTimeNavigator
 
         }
     }
