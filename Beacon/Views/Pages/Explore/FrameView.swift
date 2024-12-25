@@ -8,7 +8,6 @@ struct FrameView: View {
     
     var body: some View {
         ZStack {
-            let _ = print("model.frame: \(String(describing: model.frame))")
             if let image = model.frame {
                 Image(image, scale: 1.0, orientation: .up, label: label)
                     .resizable()
