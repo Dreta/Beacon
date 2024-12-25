@@ -8,6 +8,7 @@ class FrameHandler: NSObject, ObservableObject {
     @Published var frame: CGImage?
     @Published var selectedObject: DetectedObject?
     @Published var detectedObjects: [DetectedObject] = []
+    @Published var minDepth: Float?
     
     // MARK: - Basic Data
     private var permissionGranted = false
@@ -15,7 +16,7 @@ class FrameHandler: NSObject, ObservableObject {
     private var captureSessionReady = false
     private let sessionQueue = DispatchQueue(label: "sessionQueue")
     private let context = CIContext()
-    private let featuresHandler = FeaturesHandler()
+    let featuresHandler = FeaturesHandler()
     
     var latestDepthData: AVDepthData?
     var lastDepth: Float?
@@ -150,12 +151,67 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
 
 // MARK: - AVCaptureDepthDataOutputDelegate
 extension FrameHandler: AVCaptureDepthDataOutputDelegate {
+    func updateMinDepth(with depthData: AVDepthData) {
+        let depthConverted = depthData.converting(toDepthDataType: kCVPixelFormatType_DisparityFloat32)
+        let depthBuffer = depthConverted.depthDataMap
+        
+        CVPixelBufferLockBaseAddress(depthBuffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(depthBuffer, .readOnly) }
+        
+        let width = CVPixelBufferGetWidth(depthBuffer)
+        let height = CVPixelBufferGetHeight(depthBuffer)
+        
+        guard let baseAddress = CVPixelBufferGetBaseAddress(depthBuffer)?
+            .assumingMemoryBound(to: Float.self) else {
+            DispatchQueue.main.async {
+                self.minDepth = nil
+            }
+            return
+        }
+        
+        let regionSize = 50
+        let centerX = width / 2
+        let centerY = height / 2
+        
+        var minDepthValue: Float = Float.greatestFiniteMagnitude
+        
+        let startX = max(0, centerX - regionSize)
+        let endX   = min(width - 1, centerX + regionSize)
+        let startY = max(0, centerY - regionSize)
+        let endY   = min(height - 1, centerY + regionSize)
+        
+        for y in startY..<endY {
+            for x in startX..<endX {
+                let index = y * width + x
+                let disparity = baseAddress[index]
+                if disparity > 0 {
+                    let depthMeters = 1.0 / disparity
+                    if depthMeters < minDepthValue {
+                        minDepthValue = depthMeters
+                    }
+                }
+            }
+        }
+        
+        if minDepthValue == Float.greatestFiniteMagnitude {
+            DispatchQueue.main.async {
+                self.minDepth = nil
+            }
+            return
+        }
+        
+        DispatchQueue.main.async {
+            self.minDepth = minDepthValue
+        }
+    }
+    
     func depthDataOutput(_ output: AVCaptureDepthDataOutput,
                          didOutput depthData: AVDepthData,
                          timestamp: CMTime,
                          connection: AVCaptureConnection) {
         DispatchQueue.main.async {
             self.latestDepthData = depthData
+            self.updateMinDepth(with: depthData)
         }
     }
 }
