@@ -3,6 +3,11 @@ import SwiftUI
 protocol Feature {
     var priority: Int { get }
     func action(model: FrameHandler)
+    func beforeRemove(model: FrameHandler)
+}
+
+extension Feature {
+    func beforeRemove(model: FrameHandler) {}
 }
 
 class FeaturesHandler: NSObject, ObservableObject {
@@ -11,8 +16,9 @@ class FeaturesHandler: NSObject, ObservableObject {
     
     override init() {
         super.init()
-        guard let feature = IdentifySelectFeature() else { return }
-        features.append(feature)
+        if let f = IdentifySelectFeature() {
+            features.append(f)
+        }
         features.append(HapticFeedbackFeature())
     }
     

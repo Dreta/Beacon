@@ -1,5 +1,6 @@
 import UIKit
 
+/// Haptic feedback for detected objects in `IdentifySelectFeature`
 class HapticFeedbackFeature: Feature {
     var priority = 1 // Needs to happen AFTER IdentifySelectFeature
     

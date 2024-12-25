@@ -58,6 +58,13 @@ class IdentifySelectFeature: Feature {
         }
     }
     
+    func beforeRemove(model: FrameHandler) {
+        DispatchQueue.main.async {
+            model.detectedObjects = []
+            model.selectedObject = nil
+        }
+    }
+    
     private func annotateDepth(model: FrameHandler, for objects: [DetectedObject]) -> [DetectedObject] {
         guard let depthData = model.latestDepthData else { return objects }
         let depthConverted = depthData.converting(toDepthDataType: kCVPixelFormatType_DisparityFloat32)
