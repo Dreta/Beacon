@@ -19,7 +19,7 @@ class FeaturesHandler: NSObject, ObservableObject {
 //        if let f = IdentifySelectFeature() {
 //            features.append(f)
 //        }
-//        features.append(HapticFeedbackFeature())
+        features.append(HapticFeedbackFeature())
         features.append(GeneralHapticFeature())
     }
     

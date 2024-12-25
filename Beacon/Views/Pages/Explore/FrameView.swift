@@ -55,15 +55,16 @@ struct FrameView: View {
                                 .foregroundColor(.white)
                             }
                         }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                            .padding(.top)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .padding(.top)
                     )
                 
                 // 3) SHOW MIN DEPTH IF GeneralHapticFeature IS ACTIVE
                     .overlay(
                         VStack {
                             if model.featuresHandler.features
-                                .contains(where: { $0 is GeneralHapticFeature }) && model.selectedObject == nil {
+                                .contains(where: { $0 is GeneralHapticFeature }) && !model.featuresHandler.features
+                                .contains(where: { $0 is IdentifySelectFeature }) {
                                 if let minDepth = model.minDepth {
                                     Text(String(format: "Distance: %.2f m", minDepth))
                                         .font(.headline)
@@ -75,33 +76,45 @@ struct FrameView: View {
                             }
                         }
                         // Position to taste
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                            .padding(.top)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .padding(.top)
                     )
                 
                 // 4) SETTINGS BUTTON (bottom overlay)
                     .overlay(
                         VStack {
                             HStack {
+                                let identifyActive = model.featuresHandler.features.contains(where: { $0 is IdentifySelectFeature })
+                                
                                 Button(action: {
-                                    // Add button action here
-                                    print("Button tapped!")
+                                    toggleIdentifySelectFeature()
                                 }) {
-                                    Image(systemName: "gear")
-                                        .foregroundColor(.white)
-                                        .frame(width: 44, height: 44)
-                                        .background(Circle().fill(.background))
+                                    Image(systemName: "person.crop.rectangle")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 22, height: 22)
+                                        .padding(10)
+                                        .foregroundColor(identifyActive ? .white : .secondary)
+                                        .background(
+                                            Circle()
+                                                .fill(identifyActive ? .accentColor : Color(.systemBackground))
+                                        )
                                 }
+                                .accessibilityLabel(
+                                    Text(identifyActive
+                                         ? "Turn off object identification"
+                                         : "Turn on object identification")
+                                )
+                                
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical)
                             .background(.ultraThinMaterial)
                         }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     )
                 
             } else {
-                // If camera permission or camera feed is unavailable
                 VStack {
                     Text("To use Explore, please allow camera access in Settings.")
                         .multilineTextAlignment(.center)
@@ -124,5 +137,25 @@ struct FrameView: View {
         // Flip y for Vision bounding boxes
         let y = (1 - normalizedRect.maxY) * size.height
         return CGRect(x: x, y: y, width: width, height: height)
+    }
+    
+    /// Helper function to toggle the IdentifySelectFeature in the feature list
+    private func toggleIdentifySelectFeature() {
+        let isActive = model.featuresHandler.features.contains(where: { $0 is IdentifySelectFeature })
+        
+        if isActive {
+            // Remove IdentifySelectFeature and call beforeRemove
+            if let index = model.featuresHandler.features.firstIndex(where: { $0 is IdentifySelectFeature }) {
+                model.featuresHandler.features[index].beforeRemove(model: model)
+                model.featuresHandler.features.remove(at: index)
+            }
+        } else {
+            // Attempt to create and add a new IdentifySelectFeature
+            if let newFeature = IdentifySelectFeature() {
+                model.featuresHandler.features.append(newFeature)
+            } else {
+                print("Could not init IdentifySelectFeature. (Model not loaded?)")
+            }
+        }
     }
 }
