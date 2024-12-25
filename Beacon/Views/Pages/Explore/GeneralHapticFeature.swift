@@ -14,23 +14,24 @@ class GeneralHapticFeature: Feature {
         heavyGenerator.prepare()
         mediumGenerator.prepare()
         lightGenerator.prepare()
+        
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
     }
     
     func action(model: FrameHandler) {
-        // If IdentifySelectFeature is selecting an object, skip.
-        guard model.selectedObject == nil else { return }
+        guard isPhoneHeldUp() else { return }
         
+        // 2) If IdentifySelectFeature is selecting an object, skip
+        guard model.selectedObject == nil else { return }
         guard let minDepthValue = model.minDepth else { return }
         
         let maxAllowedDistance: Float = 5.0
         guard minDepthValue <= maxAllowedDistance else { return }
-        
         let currentTime = CFAbsoluteTimeGetCurrent()
         let elapsed = currentTime - lastHapticTime
         let interval = hapticInterval(for: minDepthValue)
         
         if elapsed >= interval {
-            // Choose intensity
             if minDepthValue < 1.0 {
                 heavyGenerator.impactOccurred()
             } else if minDepthValue < 2.0 {
@@ -40,6 +41,21 @@ class GeneralHapticFeature: Feature {
             }
             lastHapticTime = currentTime
             lastHapticInterval = interval
+        }
+    }
+    
+    func beforeRemove(model: FrameHandler) {
+        UIDevice.current.endGeneratingDeviceOrientationNotifications()
+    }
+    
+    private func isPhoneHeldUp() -> Bool {
+        let orientation = UIDevice.current.orientation
+        
+        switch orientation {
+        case .portrait, .portraitUpsideDown, .landscapeLeft, .landscapeRight:
+            return true
+        default:
+            return false
         }
     }
     

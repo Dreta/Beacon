@@ -16,9 +16,6 @@ class FeaturesHandler: NSObject, ObservableObject {
     
     override init() {
         super.init()
-//        if let f = IdentifySelectFeature() {
-//            features.append(f)
-//        }
         features.append(HapticFeedbackFeature())
         features.append(GeneralHapticFeature())
     }
