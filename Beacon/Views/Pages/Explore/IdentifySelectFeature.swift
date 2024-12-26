@@ -4,7 +4,7 @@ class IdentifySelectFeature: Feature {
     var priority: Int = 0
     private let visionModel: VNCoreMLModel
     
-    init?() {
+    required init?() {
         guard let model = try? VNCoreMLModel(for: yolo11m().model) else {
             return nil
         }

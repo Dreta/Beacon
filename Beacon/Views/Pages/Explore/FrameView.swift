@@ -15,7 +15,8 @@ struct FrameView: View {
                 // 1) BOUNDING BOX OVERLAY (IdentifySelectFeature only)
                     .overlay(
                         GeometryReader { geo in
-                            if model.featuresHandler.features.contains(where: { $0 is IdentifySelectFeature }),
+                            if model.featuresHandler
+                                .isEnabled(IdentifySelectFeature.self),
                                let selected = model.selectedObject {
                                 
                                 let rect = boundingBoxRect(normalizedRect: selected.boundingBox, in: geo.size)
@@ -35,7 +36,8 @@ struct FrameView: View {
                 // 2) DETECTED OBJECT INFO (IdentifySelectFeature only)
                     .overlay(
                         VStack {
-                            if model.featuresHandler.features.contains(where: { $0 is IdentifySelectFeature }),
+                            if model.featuresHandler
+                                .isEnabled(IdentifySelectFeature.self),
                                let selected = model.selectedObject {
                                 VStack(alignment: .center, spacing: 4) {
                                     Text("\(selected.label)".capitalized(with: .current))
@@ -55,39 +57,20 @@ struct FrameView: View {
                                 .foregroundColor(.white)
                             }
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .padding(.top)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .padding(.top)
                     )
-                
-                // 3) SHOW MIN DEPTH IF GeneralHapticFeature IS ACTIVE
-                    .overlay(
-                        VStack {
-                            if model.featuresHandler.features
-                                .contains(where: { $0 is GeneralHapticFeature }) && !model.featuresHandler.features
-                                .contains(where: { $0 is IdentifySelectFeature }) {
-                                if let minDepth = model.minDepth {
-                                    Text(String(format: "Distance: %.2f m", minDepth))
-                                        .font(.headline)
-                                        .padding(8)
-                                        .background(.ultraThinMaterial)
-                                        .cornerRadius(16)
-                                        .foregroundColor(.white)
-                                }
-                            }
-                        }
-                        // Position to taste
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .padding(.top)
-                    )
-                
                 // 4) SETTINGS BUTTON (bottom overlay)
                     .overlay(
                         VStack {
                             HStack {
-                                let identifyActive = model.featuresHandler.features.contains(where: { $0 is IdentifySelectFeature })
+                                let identifyActive = model.featuresHandler.isEnabled(
+                                    IdentifySelectFeature.self
+                                )
                                 
                                 Button(action: {
-                                    toggleIdentifySelectFeature()
+                                    model.featuresHandler
+                                        .toggle(IdentifySelectFeature.self, model: model)
                                 }) {
                                     Image(systemName: "person.crop.rectangle")
                                         .resizable()
@@ -97,7 +80,7 @@ struct FrameView: View {
                                         .foregroundColor(identifyActive ? .white : .secondary)
                                         .background(
                                             Circle()
-                                                .fill(identifyActive ? .accentColor : Color(.systemBackground))
+                                                .fill(identifyActive ? .accentColor : .background)
                                         )
                                 }
                                 .accessibilityLabel(
@@ -111,7 +94,7 @@ struct FrameView: View {
                             .padding(.vertical)
                             .background(.ultraThinMaterial)
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     )
                 
             } else {
@@ -137,25 +120,5 @@ struct FrameView: View {
         // Flip y for Vision bounding boxes
         let y = (1 - normalizedRect.maxY) * size.height
         return CGRect(x: x, y: y, width: width, height: height)
-    }
-    
-    /// Helper function to toggle the IdentifySelectFeature in the feature list
-    private func toggleIdentifySelectFeature() {
-        let isActive = model.featuresHandler.features.contains(where: { $0 is IdentifySelectFeature })
-        
-        if isActive {
-            // Remove IdentifySelectFeature and call beforeRemove
-            if let index = model.featuresHandler.features.firstIndex(where: { $0 is IdentifySelectFeature }) {
-                model.featuresHandler.features[index].beforeRemove(model: model)
-                model.featuresHandler.features.remove(at: index)
-            }
-        } else {
-            // Attempt to create and add a new IdentifySelectFeature
-            if let newFeature = IdentifySelectFeature() {
-                model.featuresHandler.features.append(newFeature)
-            } else {
-                print("Could not init IdentifySelectFeature. (Model not loaded?)")
-            }
-        }
     }
 }
