@@ -16,7 +16,7 @@ class IdentifySelectFeature: Feature {
         self.visionModel = model
     }
     
-    func overlays(model: FrameHandler) -> AnyView {
+    func overlay(model: FrameHandler) -> AnyView {
         AnyView(
             ZStack {
                 DetectedObjectInfo(model: model)
