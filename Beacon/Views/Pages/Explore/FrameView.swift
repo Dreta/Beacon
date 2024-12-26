@@ -18,16 +18,16 @@ struct FrameView: View {
                             }
                         }
                     )
-                /*
                     .overlay(
                         VStack {
                             HStack {
-                                ForEach(FeaturesHandler.availableFeatures, id: \.self) { featureType in
+                                // Enumerate through each of FeaturesHandler.availableFeatures by converting to an array
+                                ForEach(Array(FeaturesHandler.availableFeatures.enumerated()), id: \.offset) { index, featureType in
                                     let enabled = model.featuresHandler.isEnabled(featureType)
                                     Button(action: {
                                         model.featuresHandler.toggle(featureType, model: model)
                                     }) {
-                                        featureType.icon
+                                        Image(systemName: featureType.icon)
                                             .resizable()
                                             .scaledToFit()
                                             .frame(width: 22, height: 22)
@@ -35,7 +35,7 @@ struct FrameView: View {
                                             .foregroundColor(enabled ? .white : .secondary)
                                             .background(
                                                 Circle()
-                                                    .fill(enabled ? .accentColor : .background)
+                                                    .fill(enabled ? .accentColor : Color(.systemBackground))
                                             )
                                     }
                                     .accessibilityLabel(
@@ -50,7 +50,7 @@ struct FrameView: View {
                             .background(.ultraThinMaterial)
                         }
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                 )*/
+                    )
             } else {
                 // Camera access or fallback UI
                 VStack {

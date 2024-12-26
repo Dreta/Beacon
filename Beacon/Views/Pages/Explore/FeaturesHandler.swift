@@ -6,7 +6,7 @@ protocol Feature: Identifiable {
     static var priority: Int { get }
     var _priority: Int { get }
     static var name: String { get }
-    static var icon: Image { get }
+    static var icon: String { get }
     func action(model: FrameHandler)
     func beforeRemove(model: FrameHandler)
     func overlay(model: FrameHandler) -> AnyView
