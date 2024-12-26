@@ -1,7 +1,12 @@
 import Vision
+import SwiftUI
 
 class IdentifySelectFeature: Feature {
-    var priority: Int = 0
+    let id = UUID()
+    
+    static var priority: Int = 0
+    static var name: String = "Object Identification"
+    static var icon: Image = Image(systemName: "magnifyingglass")
     private let visionModel: VNCoreMLModel
     
     required init?() {
@@ -9,6 +14,15 @@ class IdentifySelectFeature: Feature {
             return nil
         }
         self.visionModel = model
+    }
+    
+    func overlays(model: FrameHandler) -> AnyView {
+        AnyView(
+            ZStack {
+                DetectedObjectInfo(model: model)
+                BoundingBox(model: model)
+            }
+        )
     }
     
     func action(model: FrameHandler) {

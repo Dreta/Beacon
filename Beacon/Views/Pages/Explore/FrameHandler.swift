@@ -152,6 +152,7 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
 // MARK: - AVCaptureDepthDataOutputDelegate
 extension FrameHandler: AVCaptureDepthDataOutputDelegate {
     func updateMinDepth(with depthData: AVDepthData) {
+        // Processing min depth for path clearance detection
         let depthConverted = depthData.converting(toDepthDataType: kCVPixelFormatType_DisparityFloat32)
         let depthBuffer = depthConverted.depthDataMap
         

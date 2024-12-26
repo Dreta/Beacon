@@ -1,29 +1,43 @@
 import SwiftUI
 
-protocol Feature {
-    var priority: Int { get }
+protocol Feature: Identifiable {
+    var id: UUID { get }
+    
+    static var priority: Int { get }
+    var _priority: Int { get }
+    static var name: String { get }
+    static var icon: Image { get }
     func action(model: FrameHandler)
     func beforeRemove(model: FrameHandler)
+    func overlay(model: FrameHandler) -> AnyView
     
     init?()
 }
 
 extension Feature {
     func beforeRemove(model: FrameHandler) {}
+    func overlay(model: FrameHandler) -> AnyView {
+        AnyView(EmptyView())
+    }
+    
+    var _priority: Int {
+        Self.priority
+    }
 }
 
 class FeaturesHandler: NSObject, ObservableObject {
     // TODO: Save enabled features
-    @Published var features: [Feature] = []
+    @Published var features: [any Feature] = []
+    static let availableFeatures: [any Feature.Type] = [IdentifySelectFeature.self]
     
     override init() {
         super.init()
-        features.append(HapticFeedbackFeature())
-        features.append(GeneralHapticFeature())
     }
     
     func action(model: FrameHandler) {
-        features.sorted { $0.priority < $1.priority }
+        // Sort feature by priority and run action, noting that priority is static
+        features
+            .sorted { $0._priority < $1._priority }
             .forEach { $0.action(model: model) }
     }
     
