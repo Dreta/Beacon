@@ -49,8 +49,8 @@ struct FrameView: View {
                             .padding(.vertical)
                             .background(.ultraThinMaterial)
                         }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)*/
-                        )
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                 )*/
             } else {
                 // Camera access or fallback UI
                 VStack {
