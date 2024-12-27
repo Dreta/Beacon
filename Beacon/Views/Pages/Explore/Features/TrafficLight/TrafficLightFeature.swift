@@ -29,6 +29,12 @@ class TrafficLightFeature: Feature {
     }
     
     func action(model: FrameHandler) {
+        guard let image = model.frame else {
+            DispatchQueue.main.async {
+                model.trafficLight = nil
+            }
+            return
+        }
         let request = VNCoreMLRequest(model: visionModel) { request, error in
             guard error == nil else {
                 model.trafficLight = nil
@@ -46,6 +52,16 @@ class TrafficLightFeature: Feature {
             }
             DispatchQueue.main.async {
                 self.updateSelection(model: model, with: detections)
+            }
+        }
+        let requestHandler = VNImageRequestHandler(cgImage: image, options: [:])
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try requestHandler.perform([request])
+            } catch {
+                DispatchQueue.main.async {
+                    model.trafficLight = nil
+                }
             }
         }
     }
