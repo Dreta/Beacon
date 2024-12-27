@@ -28,7 +28,7 @@ extension Feature {
 class FeaturesHandler: NSObject, ObservableObject {
     // TODO: Save enabled features
     @Published var features: [any Feature] = []
-    static let availableFeatures: [any Feature.Type] = [IdentifySelectFeature.self]
+    static let availableFeatures: [any Feature.Type] = [IdentifySelectFeature.self, TrafficLightFeature.self]
     
     override init() {
         super.init()

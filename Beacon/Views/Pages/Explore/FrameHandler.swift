@@ -10,6 +10,8 @@ class FrameHandler: NSObject, ObservableObject {
     @Published var detectedObjects: [DetectedObject] = []
     @Published var minDepth: Float?
     
+    @Published var trafficLight: DetectedObject?
+    
     // MARK: - Basic Data
     private var permissionGranted = false
     private let captureSession = AVCaptureSession()
