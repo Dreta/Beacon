@@ -7,6 +7,7 @@ class TrafficLightFeature: Feature {
     static var priority: Int = 0
     static var name: String = "Traffic Light Detection"
     static var icon: String = "light.beacon.max.fill"
+    static var conflict: [any Feature.Type] = [IdentifySelectFeature.self]
     
     private let visionModel: VNCoreMLModel
     
@@ -18,14 +19,10 @@ class TrafficLightFeature: Feature {
     }
     
     func overlay(model: FrameHandler) -> AnyView {
-        if let light = model.trafficLight {
-            print(light.label)
-        }
-        return AnyView(
-            ZStack {
-                
-            }
-        )
+        AnyView(ZStack {
+            TrafficLightBoundingBox(model: model)
+            TrafficLightInfo(model: model)
+        })
     }
     
     func action(model: FrameHandler) {

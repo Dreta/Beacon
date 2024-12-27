@@ -7,6 +7,7 @@ class IdentifySelectFeature: Feature {
     static var priority: Int = 0
     static var name: String = "Object Identification"
     static var icon: String = "magnifyingglass"
+    static var conflict: [any Feature.Type] = [TrafficLightFeature.self]
     private let visionModel: VNCoreMLModel
     
     required init?() {

@@ -4,14 +4,18 @@ protocol Feature: Identifiable {
     var id: UUID { get }
     
     static var priority: Int { get }
-    var _priority: Int { get }
+    static var conflict: [any Feature.Type] { get }
     static var name: String { get }
     static var icon: String { get }
+
     func action(model: FrameHandler)
     func beforeRemove(model: FrameHandler)
     func overlay(model: FrameHandler) -> AnyView
     
     init?()
+    
+    var _priority: Int { get }
+    var _conflict: [any Feature.Type] { get }
 }
 
 extension Feature {
@@ -22,6 +26,10 @@ extension Feature {
     
     var _priority: Int {
         Self.priority
+    }
+    
+    var _conflict: [any Feature.Type] {
+        Self.conflict
     }
 }
 
@@ -45,10 +53,11 @@ class FeaturesHandler: NSObject, ObservableObject {
         features.contains { $0 is T }
     }
     
-    func enable<T: Feature>(_ type: T.Type) {
+    func enable<T: Feature>(_ type: T.Type, model: FrameHandler) {
         if !isEnabled(type) {
             if let feature = type.init() {
                 features.append(feature)
+                feature._conflict.forEach { conflict in disable(conflict, model: model) }
             }
         }
     }
@@ -64,7 +73,7 @@ class FeaturesHandler: NSObject, ObservableObject {
         if isEnabled(type) {
             disable(type, model: model)
         } else {
-            enable(type)
+            enable(type, model: model)
         }
     }
 }
