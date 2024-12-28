@@ -34,8 +34,7 @@ struct FrameView: View {
                                             .padding(10)
                                             .foregroundColor(enabled ? .white : .secondary)
                                             .background(
-                                                Circle()
-                                                    .fill(enabled ? .accentColor : Color(.systemBackground))
+                                                Circle().fill(enabled ? .accentColor : Color(.quaternarySystemFill))
                                             )
                                     }
                                     .accessibilityLabel(

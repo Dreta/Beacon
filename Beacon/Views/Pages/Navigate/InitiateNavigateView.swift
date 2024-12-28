@@ -51,7 +51,14 @@ struct InitiateNavigateView: View {
                 .background(RoundedRectangle(cornerRadius: 10).fill(.quaternary))
                 .padding([.horizontal, .bottom])
             }) {
-                Text("Hi")
+                VStack(alignment: .leading) {
+                    Text("Recent Searches")
+                        .font(.caption)
+                    Text("Routes")
+                        .font(.caption2)
+                }
+                .frame(width: .greatestFiniteMagnitude)
+                .padding()
             }
             .enableAppleScrollBehavior()
             .background(.ultraThickMaterial)
