@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import BottomSheet
 
 struct InitiateNavigateView: View {
     @ObservedObject var model = RouteHelper()
@@ -9,6 +10,7 @@ struct InitiateNavigateView: View {
     @State private var targetSearch: String = ""
     
     @State private var mapPosition: MapCameraPosition
+    @State private var bottomSheetPosition: BottomSheetPosition = .relativeBottom(0.2)
     
     init() {
         _mapPosition = State(initialValue: .region(MKCoordinateRegion(
@@ -23,24 +25,36 @@ struct InitiateNavigateView: View {
                 Map(position: $mapPosition) {
                     UserAnnotation()
                 }
-                    .onAppear {
-                        updateRegion(with: coordinate)
-                    }
-                    .mapStyle(.standard(elevation: .realistic))
-                    .mapControls {
-                        MapCompass()
-                        MapScaleView()
-                    }
-                VStack {
-                    VStack {
-                        TextField("Where to...", text: $targetSearch)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
+                .onAppear {
+                    updateRegion(with: coordinate)
                 }
-                .padding()
-                .background(.ultraThickMaterial)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                .mapStyle(.standard(elevation: .realistic))
+                .mapControls {
+                    MapCompass()
+                    MapScaleView()
+                }
+                .ignoresSafeArea(.keyboard)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .bottomSheet(bottomSheetPosition: $bottomSheetPosition, switchablePositions: [.relativeBottom(0.2), .relativeTop(0.95)], headerContent: {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                    TextField("Search", text: self.$targetSearch, onEditingChanged: { begin in
+                        if begin {
+                            bottomSheetPosition = .relativeTop(0.95)
+                        }
+                    })
+                }
+                .foregroundColor(Color(UIColor.secondaryLabel))
+                .padding(.vertical, 8)
+                .padding(.horizontal, 5)
+                .background(RoundedRectangle(cornerRadius: 10).fill(.quaternary))
+                .padding([.horizontal, .bottom])
+            }) {
+                Text("Hi")
+            }
+            .enableAppleScrollBehavior()
+            .background(.ultraThickMaterial)
         } else {
             VStack {
                 Text("To use Navigate, please allow location access in Settings.")
@@ -61,12 +75,6 @@ struct InitiateNavigateView: View {
             span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
         ))
     }
-}
-
-struct MapMarkerData: Identifiable {
-    let id = UUID()
-    let name: String
-    let coordinate: CLLocationCoordinate2D
 }
 
 #Preview {

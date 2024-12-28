@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		B8C7AEB92D1659FF001CC638 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = B8C7AEB82D1659FF001CC638 /* .gitignore */; };
 		B8ECE4C82CFF3EBC00EBEE87 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = B8ECE4C72CFF3EBA00EBEE87 /* README.md */; };
+		B8F5C6E92D1FF4F1005551A6 /* BottomSheet in Frameworks */ = {isa = PBXBuildFile; productRef = B8F5C6E82D1FF4F1005551A6 /* BottomSheet */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +50,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B8F5C6E92D1FF4F1005551A6 /* BottomSheet in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -109,6 +111,7 @@
 			);
 			name = Beacon;
 			packageProductDependencies = (
+				B8F5C6E82D1FF4F1005551A6 /* BottomSheet */,
 			);
 			productName = Beacon;
 			productReference = B8B1DEF12CFF012D0001B5F1 /* Beacon.app */;
@@ -186,6 +189,9 @@
 			);
 			mainGroup = B8B1DEE82CFF012D0001B5F1;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B8F5C6E72D1FF4F1005551A6 /* XCRemoteSwiftPackageReference "BottomSheet" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B8B1DEF22CFF012D0001B5F1 /* Products */;
 			projectDirPath = "";
@@ -559,6 +565,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B8F5C6E72D1FF4F1005551A6 /* XCRemoteSwiftPackageReference "BottomSheet" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/lucaszischka/BottomSheet";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.1.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B8F5C6E82D1FF4F1005551A6 /* BottomSheet */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B8F5C6E72D1FF4F1005551A6 /* XCRemoteSwiftPackageReference "BottomSheet" */;
+			productName = BottomSheet;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B8B1DEE92CFF012D0001B5F1 /* Project object */;
 }
