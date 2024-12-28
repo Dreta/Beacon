@@ -3,7 +3,7 @@ import SwiftUI
 struct HomeView: View {
     var body: some View {
         TabView {
-            NavigateView()
+            InitiateNavigateView()
                 .tabItem {
                     Image(systemName: "map")
                     Text("Navigate")
