@@ -2,7 +2,7 @@ import SwiftUI
 
 struct FrameView: View {
     @StateObject var model: FrameHandler
-    private let label = Text("Frame")
+    private let label = Text("Explore View")
     
     var body: some View {
         ZStack {
@@ -16,7 +16,7 @@ struct FrameView: View {
                             ForEach(model.featuresHandler.features, id: \.id) { feature in
                                 feature.overlay(model: model)
                             }
-                        }
+                        }.accessibilityHidden(true) // Hide from accessibility to avoid confusion - feedback should be provided separately
                     )
                     .overlay(
                         VStack {

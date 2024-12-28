@@ -1,5 +1,6 @@
 import Vision
 import SwiftUI
+import AVFoundation
 
 class IdentifySelectFeature: Feature {
     let id = UUID()
@@ -8,7 +9,11 @@ class IdentifySelectFeature: Feature {
     static var name: String = "Object Identification"
     static var icon: String = "magnifyingglass"
     static var conflict: [any Feature.Type] = [TrafficLightFeature.self]
+    
     private let visionModel: VNCoreMLModel
+    private let synthesizer = AVSpeechSynthesizer()
+    
+    private var frame = 0
     
     required init?() {
         guard let model = try? VNCoreMLModel(for: yolo11m().model) else {
@@ -27,6 +32,8 @@ class IdentifySelectFeature: Feature {
     }
     
     func action(model: FrameHandler) {
+        frame += 1
+        guard frame % 3 == 0 else { return }
         guard let image = model.frame else {
             DispatchQueue.main.async {
                 model.detectedObjects = []
@@ -138,6 +145,9 @@ class IdentifySelectFeature: Feature {
             return
         }
         
+        if (newSelected.label != model.selectedObject?.label) {
+            speak(newSelected.label)
+        }
         model.selectedObject = newSelected
     }
     
@@ -145,5 +155,15 @@ class IdentifySelectFeature: Feature {
         let dx = boxCenter.x - screenCenter.x
         let dy = boxCenter.y - screenCenter.y
         return dx * dx + dy * dy
+    }
+    
+    private func speak(_ text: String) {
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        synthesizer.speak(utterance)
     }
 }

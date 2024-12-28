@@ -1,5 +1,6 @@
 import Vision
 import SwiftUI
+import AVFoundation
 
 class TrafficLightFeature: Feature {
     let id = UUID()
@@ -10,6 +11,9 @@ class TrafficLightFeature: Feature {
     static var conflict: [any Feature.Type] = [IdentifySelectFeature.self]
     
     private let visionModel: VNCoreMLModel
+    private let synthesizer = AVSpeechSynthesizer()
+    
+    private var frame = 0
     
     required init?() {
         guard let model = try? VNCoreMLModel(for: yoloTrafficLight().model) else {
@@ -26,6 +30,8 @@ class TrafficLightFeature: Feature {
     }
     
     func action(model: FrameHandler) {
+        frame += 1
+        guard frame % 3 == 0 else { return }
         guard let image = model.frame else {
             DispatchQueue.main.async {
                 model.trafficLight = nil
@@ -79,7 +85,9 @@ class TrafficLightFeature: Feature {
             model.trafficLight = nil
             return
         }
-        
+        if (newSelected.label != model.trafficLight?.label) {
+            speak(newSelected.label)
+        }
         model.trafficLight = newSelected
     }
     
@@ -93,5 +101,15 @@ class TrafficLightFeature: Feature {
         DispatchQueue.main.async {
             model.trafficLight = nil
         }
+    }
+    
+    private func speak(_ text: String) {
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        synthesizer.speak(utterance)
     }
 }
