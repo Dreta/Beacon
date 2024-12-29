@@ -29,8 +29,11 @@ struct InitiateNavigateView: View {
                         updateRegion(with: coordinate)
                     }
                     .sheet(item: $selectedItem) { item in
-                        MapItemDetailsView(item: item.item)
-                            .presentationDetents([.medium, .large])
+                        MapItemDetailsView(
+                            item: item.item,
+                            selectedItem: $selectedItem
+                        )
+                            .presentationDetents([.medium])
                             .presentationBackgroundInteraction(.enabled)
                             .presentationDragIndicator(.visible)
                     }
@@ -115,6 +118,7 @@ struct InitiateNavigateView: View {
                                         searchVerb: targetSearch
                                     )
                                 }
+                                .buttonStyle(PlainButtonStyle())
                                 if searchResults.last!.item.identifier != item.item.identifier {
                                     Divider()
                                 }

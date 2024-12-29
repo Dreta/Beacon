@@ -256,4 +256,108 @@ struct MapItemView: View {
         }
         return "location.fill"
     }
+    
+    static func name(for category: MKPointOfInterestCategory?) -> String {
+        let categoryNames: [MKPointOfInterestCategory: String] = [
+            // Arts and Culture
+            .museum: "Museum",
+            .musicVenue: "Music Venue",
+            .theater: "Theater",
+            
+            // Education
+            .library: "Library",
+            .planetarium: "Planetarium",
+            .school: "School",
+            .university: "University",
+            
+            // Entertainment
+            .movieTheater: "Movie Theater",
+            .nightlife: "Nightlife",
+            
+            // Health and Safety
+            .fireStation: "Fire Station",
+            .hospital: "Hospital",
+            .pharmacy: "Pharmacy",
+            .police: "Police Station",
+            
+            // Historical and Cultural Landmarks
+            .castle: "Castle",
+            .fortress: "Fortress",
+            .landmark: "Landmark",
+            .nationalMonument: "National Monument",
+            
+            // Food and Drink
+            .bakery: "Bakery",
+            .brewery: "Brewery",
+            .cafe: "Cafe",
+            .distillery: "Distillery",
+            .foodMarket: "Food Market",
+            .restaurant: "Restaurant",
+            .winery: "Winery",
+            
+            // Personal Services
+            .animalService: "Animal Service",
+            .atm: "ATM",
+            .automotiveRepair: "Automotive Repair",
+            .bank: "Bank",
+            .beauty: "Beauty Service",
+            .evCharger: "EV Charger",
+            .fitnessCenter: "Fitness Center",
+            .laundry: "Laundry Service",
+            .mailbox: "Mailbox",
+            .postOffice: "Post Office",
+            .restroom: "Restroom",
+            .spa: "Spa",
+            .store: "Store",
+            
+            // Parks and Recreation
+            .amusementPark: "Amusement Park",
+            .aquarium: "Aquarium",
+            .beach: "Beach",
+            .campground: "Campground",
+            .fairground: "Fairground",
+            .marina: "Marina",
+            .nationalPark: "National Park",
+            .park: "Park",
+            .rvPark: "RV Park",
+            .zoo: "Zoo",
+            
+            // Sports
+            .baseball: "Baseball Field",
+            .basketball: "Basketball Court",
+            .bowling: "Bowling Alley",
+            .goKart: "Go-Kart Track",
+            .golf: "Golf Course",
+            .hiking: "Hiking Trail",
+            .miniGolf: "Mini Golf",
+            .rockClimbing: "Rock Climbing Facility",
+            .skatePark: "Skate Park",
+            .skating: "Skating Rink",
+            .skiing: "Skiing Area",
+            .soccer: "Soccer Field",
+            .stadium: "Stadium",
+            .tennis: "Tennis Court",
+            .volleyball: "Volleyball Court",
+            
+            // Travel
+            .airport: "Airport",
+            .carRental: "Car Rental",
+            .conventionCenter: "Convention Center",
+            .gasStation: "Gas Station",
+            .hotel: "Hotel",
+            .parking: "Parking Area",
+            .publicTransport: "Public Transport",
+            
+            // Water Sports
+            .fishing: "Fishing Area",
+            .kayaking: "Kayaking Area",
+            .surfing: "Surfing Area",
+            .swimming: "Swimming Pool"
+        ]
+        
+        if let category = category {
+            return categoryNames[category] ?? "Point of Interest"
+        }
+        return "Point of Interest"
+    }
 }
