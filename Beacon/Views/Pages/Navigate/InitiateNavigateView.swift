@@ -43,6 +43,7 @@ struct InitiateNavigateView: View {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(Color(UIColor.secondaryLabel))
+                            .accessibilityHidden(true)
                         TextField("Search", text: self.$targetSearch, onEditingChanged: { begin in
                             // Automatically move the bottom sheet to the top when search is focused
                             if begin {
@@ -177,6 +178,7 @@ struct MapItemView: View {
                 .frame(width: 16, height: 16)
                 .padding(8)
                 .foregroundColor(.white)
+                .accessibilityHidden(true)
                 .background(Circle().fill(MapItemView.color(for: item.pointOfInterestCategory)))
             VStack(alignment: .leading) {
                 Text(LocalizedStringKey((item.name ?? "").replacing(searchVerb, with: "**\(searchVerb)**")))
