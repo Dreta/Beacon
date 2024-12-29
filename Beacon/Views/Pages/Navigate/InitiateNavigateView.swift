@@ -60,10 +60,10 @@ struct InitiateNavigateView: View {
                             .onTapGesture {
                                 searchFocused = false
                             }
-                            .onChange(of: targetSearch) {
+                            .onChange(of: targetSearch) { newValue in
                                 // Perform search if needed
-                                if targetSearch.count > 2 {
-                                    performSearch(query: targetSearch)
+                                if newValue.count > 2 {
+                                    performSearch(query: newValue)
                                 } else {
                                     searchResults = []
                                 }
@@ -133,12 +133,19 @@ struct InitiateNavigateView: View {
                         Text("Routes")
                             .font(.caption2)
                     }
-                    .frame(width: .greatestFiniteMagnitude)
+                    .frame(maxWidth: .infinity) // Changed from .greatestFiniteMagnitude to .infinity for better behavior
                     .padding()
                 }
             }
             .enableAppleScrollBehavior()
             .background(.ultraThickMaterial)
+            // **Step 2: Observe changes to `selectedItem` and update the region accordingly**
+            .onChange(of: selectedItem) { newValue in
+                if let item = newValue {
+                    // Update the map region to center on the selected POI's coordinate
+                    updateRegion(with: item.item.placemark.coordinate)
+                }
+            }
         } else {
             VStack {
                 Text("To use Navigate, please allow location access in Settings.")
@@ -177,7 +184,7 @@ struct InitiateNavigateView: View {
     InitiateNavigateView()
 }
 
-struct MKMapItemWrapped: Identifiable {
+struct MKMapItemWrapped: Identifiable, Equatable {
     let id = UUID()
     let item: MKMapItem
 }
@@ -200,6 +207,7 @@ struct MapViewWrapper: UIViewRepresentable {
         mapView.showsCompass = true
         mapView.showsScale = true
         mapView.selectableMapFeatures = [.pointsOfInterest]
+        mapView.showsUserTrackingButton = true
         mapView.delegate = context.coordinator
         return mapView
     }

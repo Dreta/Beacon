@@ -62,8 +62,10 @@ struct MapItemDetailsView: View {
                         
                         if let url = item.url {
                             VStack(alignment: .leading, spacing: 2) {
-                                Divider()
-                                    .padding(.bottom, 8)
+                                if let phone = item.phoneNumber, !phone.isEmpty {
+                                    Divider()
+                                        .padding(.bottom, 8)
+                                }
                                 Text("Website")
                                     .foregroundColor(.secondary)
                                 
@@ -79,8 +81,10 @@ struct MapItemDetailsView: View {
                         let address = formattedAddress()
                         if !address.isEmpty {
                             VStack(alignment: .leading, spacing: 2) {
-                                Divider()
-                                    .padding(.bottom, 8)
+                                if let phone = item.phoneNumber, !phone.isEmpty || item.url != nil {
+                                    Divider()
+                                        .padding(.bottom, 8)
+                                }
                                 Text("Address")
                                     .foregroundColor(.secondary)
                                 
