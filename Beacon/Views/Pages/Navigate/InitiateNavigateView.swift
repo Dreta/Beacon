@@ -59,10 +59,10 @@ struct InitiateNavigateView: View {
                             .onTapGesture {
                                 searchFocused = false
                             }
-                            .onChange(of: targetSearch) { newValue in
+                            .onChange(of: targetSearch) {
                                 // Perform search if needed
-                                if newValue.count > 2 {
-                                    performSearch(query: newValue)
+                                if targetSearch.count > 1 {
+                                    performSearch(query: targetSearch)
                                 } else {
                                     searchResults = []
                                 }
