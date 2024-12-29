@@ -34,7 +34,6 @@ struct InitiateNavigateView: View {
                             selectedItem: $selectedItem
                         )
                             .presentationDetents([.medium])
-                            .presentationBackgroundInteraction(.enabled)
                             .presentationDragIndicator(.visible)
                     }
 
