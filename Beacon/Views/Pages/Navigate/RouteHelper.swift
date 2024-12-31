@@ -34,8 +34,7 @@ class RouteHelper: NSObject, ObservableObject {
         request.destination = endItem
         request.requestsAlternateRoutes = true
         
-        //先定义为automobile之后在改别的
-        request.transportType = .automobile
+        request.transportType = .walking
         
         let directions = MKDirections(request: request)
         directions.calculate { [weak self] response, error in
