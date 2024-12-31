@@ -7,6 +7,8 @@ struct InitiateNavigateView: View {
     @ObservedObject var locationManager = LocationManager()
     @StateObject var realTimeNavigator = RealTimeNavigator()
     
+    @State private var currentRoute: MKRoute? = nil
+    
     @State private var targetSearch: String = ""
     @State private var searchResults: [MKMapItemWrapped] = []
     @State private var selectedItem: MKMapItemWrapped?
@@ -21,22 +23,53 @@ struct InitiateNavigateView: View {
     
     var body: some View {
         if let coordinate = locationManager.realCoordinate {
-            ZStack {
+            ZStack(alignment: .top) {
                 // Replace the SwiftUI Map with our MKMapView wrapper
-                MapViewWrapper(region: $region, selectedItem: $selectedItem)
+                MapViewWrapper(region: $region, selectedItem: $selectedItem, route: $currentRoute)
                     .ignoresSafeArea()
                     .onAppear {
                         updateRegion(with: coordinate)
                     }
-                    .sheet(item: $selectedItem) { item in
-                        MapItemDetailsView(
-                            item: item.item,
-                            selectedItem: $selectedItem
-                        )
-                            .presentationDetents([.medium])
-                            .presentationDragIndicator(.visible)
+                    .sheet(item: $selectedItem) { wrapped in
+                            MapItemDetailsView(item: wrapped.item, selectedItem: $selectedItem) {
+                                // 这里写点击“Walk”时真正的逻辑：
+                                guard let userCoord = locationManager.realCoordinate else { return }
+                                
+                                let userMapItem = MKMapItem(placemark: MKPlacemark(coordinate: userCoord))
+                                let destination = wrapped.item
+                                
+                                // 这里直接用 RouteHelper 来算路线
+                                let request = MKDirections.Request()
+                                request.source = userMapItem
+                                request.destination = destination
+                                request.transportType = .walking
+                                
+                                let directions = MKDirections(request: request)
+                                directions.calculate { response, error in
+                                    guard let route = response?.routes.first else { return }
+                                    // 设置给我们的 @State:
+                                    currentRoute = route
+                                    
+                                    // 同时把 route 给 realTimeNavigator
+                                    realTimeNavigator.route = route
+                                    
+                                    // 收起 Sheet，或者保持打开都行
+                                    selectedItem = nil
+                                }
+                            }
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
                     }
-
+                
+                if realTimeNavigator.instruction != "No instruction" {
+                        Text(realTimeNavigator.instruction)
+                            .padding()
+                            .background(.thinMaterial)
+                            .cornerRadius(8)
+                            .padding(.top, 50)
+                    
+                        Spacer()
+                    }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .bottomSheet(
@@ -139,6 +172,11 @@ struct InitiateNavigateView: View {
             .enableAppleScrollBehavior()
             .background(.ultraThickMaterial)
             // **Step 2: Observe changes to `selectedItem` and update the region accordingly**
+            .onReceive(locationManager.$rawLocation) { loc in
+                guard let loc = loc else { return }
+                // 把用户位置传给 realTimeNavigator，更新下一步提示
+                realTimeNavigator.updateLocation(loc)
+            }
             .onChange(of: selectedItem) { newValue in
                 if let item = newValue {
                     // Update the map region to center on the selected POI's coordinate
@@ -193,6 +231,8 @@ struct MKMapItemWrapped: Identifiable, Equatable {
 struct MapViewWrapper: UIViewRepresentable {
     @Binding var region: MKCoordinateRegion
     @Binding var selectedItem: MKMapItemWrapped?
+    
+    @Binding var route: MKRoute?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self, selectedItem: $selectedItem)
@@ -226,6 +266,11 @@ struct MapViewWrapper: UIViewRepresentable {
             }
             // Update the lastSelectedItem in the Coordinator to match SwiftUI’s new selection
             context.coordinator.lastSelectedItem = selectedItem
+        }
+        
+        uiView.removeOverlays(uiView.overlays)
+        if let route = route {
+            uiView.addOverlay(route.polyline, level: .aboveRoads)
         }
     }
     
@@ -275,6 +320,16 @@ struct MapViewWrapper: UIViewRepresentable {
                     self.lastSelectedItem = wrapped
                 }
             }
+        }
+        
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            guard let polyline = overlay as? MKPolyline else {
+                return MKOverlayRenderer(overlay: overlay)
+            }
+            let renderer = MKPolylineRenderer(polyline: polyline)
+            renderer.strokeColor = .systemBlue
+            renderer.lineWidth = 5
+            return renderer
         }
     }
 }

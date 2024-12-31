@@ -5,6 +5,8 @@ struct MapItemDetailsView: View {
     var item: MKMapItem
     @Binding var selectedItem: MKMapItemWrapped?
     
+    var onWalkButtonTapped: (() -> Void)?
+    
     var body: some View {
         VStack(alignment: .leading) {
             HStack {
@@ -27,8 +29,9 @@ struct MapItemDetailsView: View {
             Text("\(MapItemView.name(for: item.pointOfInterestCategory)) · \(item.placemark.locality ?? "")\(item.placemark.subLocality ?? "")")
                 .padding(.bottom, 8)
             
+            //MARK: "Walk" Button
             Button(action: {
-                
+                onWalkButtonTapped?()
             }) {
                 Text(LocalizedStringKey("**Walk** · 5 minutes"))
                     .frame(maxWidth: .infinity)
