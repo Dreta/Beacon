@@ -34,7 +34,11 @@ struct InitiateNavigateView: View {
                         updateRegion(with: coordinate)
                     }
                     .sheet(item: $selectedItem) { wrapped in
-                        MapItemDetailsView(item: wrapped.item, selectedItem: $selectedItem) {
+                        MapItemDetailsView(
+                            start: coordinate,
+                            item: wrapped.item,
+                            selectedItem: $selectedItem
+                        ) {
                             toNavigateItem = wrapped
                             selectedItem = nil
                         }

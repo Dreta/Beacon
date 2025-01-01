@@ -2,8 +2,11 @@ import SwiftUI
 import MapKit
 
 struct MapItemDetailsView: View {
+    var start: CLLocationCoordinate2D
     var item: MKMapItem
     @Binding var selectedItem: MKMapItemWrapped?
+    
+    @State private var travelTimeText = "..."
     
     var onWalkButtonTapped: (() -> Void)?
     
@@ -33,12 +36,21 @@ struct MapItemDetailsView: View {
             Button(action: {
                 onWalkButtonTapped?()
             }) {
-                Text(LocalizedStringKey("**Walk** · 5 minutes"))
+                Text(LocalizedStringKey("**Walk** · \(travelTimeText)"))
                     .frame(maxWidth: .infinity)
                     .padding(.all, 8)
             }
             .cornerRadius(12)
             .buttonStyle(BorderedProminentButtonStyle())
+            .onAppear {
+                findTime { maybeTime in
+                    guard let time = maybeTime else {
+                        travelTimeText = "N/A"
+                        return
+                    }
+                    travelTimeText = formatSeconds(time)
+                }
+            }
             
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.quaternarySystemFill))
@@ -103,6 +115,34 @@ struct MapItemDetailsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(.all, 24)
+    }
+    
+    private func formatSeconds(_ seconds: TimeInterval) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.unitsStyle = .short
+        formatter.allowedUnits = [.day, .hour, .minute]
+        return formatter.string(from: seconds) ?? ""
+    }
+    
+    private func findTime(completion: @escaping (TimeInterval?) -> Void) {
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: start))
+        request.destination = item
+        request.transportType = .walking
+
+        let directions = MKDirections(request: request)
+        directions.calculate { response, error in
+            if let error = error {
+                print("Error fetching directions: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            guard let route = response?.routes.first else {
+                completion(nil)
+                return
+            }
+            completion(route.expectedTravelTime)
+        }
     }
     
     private func formattedAddress() -> String {
