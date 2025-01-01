@@ -3,15 +3,16 @@ import MapKit
 import BottomSheet
 
 struct InitiateNavigateView: View {
-    @ObservedObject var model = RouteHelper()
     @ObservedObject var locationManager = LocationManager()
-    @StateObject var realTimeNavigator = RealTimeNavigator()
-    
-    @State private var currentRoute: MKRoute? = nil
     
     @State private var targetSearch: String = ""
     @State private var searchResults: [MKMapItemWrapped] = []
     @State private var selectedItem: MKMapItemWrapped?
+    
+    @State private var toNavigateItem: MKMapItemWrapped?
+    @State private var routesToShow: [MKRoute] = []
+    @State private var selectedRoute: MKRoute?
+    
     @FocusState private var searchFocused
     
     @State private var region: MKCoordinateRegion = MKCoordinateRegion(
@@ -22,53 +23,34 @@ struct InitiateNavigateView: View {
     @State private var bottomSheetPosition: BottomSheetPosition = .relativeBottom(0.2)
     
     var body: some View {
-        if let coordinate = locationManager.realCoordinate {
+        if let selectedRoute = selectedRoute {
+            NavigateSessionWrapper(route: selectedRoute)
+                .id(selectedRoute)
+        } else if let coordinate = locationManager.realCoordinate {
             ZStack(alignment: .top) {
-                // Replace the SwiftUI Map with our MKMapView wrapper
-                MapViewWrapper(region: $region, selectedItem: $selectedItem, route: $currentRoute)
+                MapViewWrapper(region: $region, selectedItem: $selectedItem, routesToShow: $routesToShow, toNavigateItem: $toNavigateItem)
                     .ignoresSafeArea()
                     .onAppear {
                         updateRegion(with: coordinate)
                     }
                     .sheet(item: $selectedItem) { wrapped in
-                            MapItemDetailsView(item: wrapped.item, selectedItem: $selectedItem) {
-                                // 这里写点击“Walk”时真正的逻辑：
-                                guard let userCoord = locationManager.realCoordinate else { return }
-                                
-                                let userMapItem = MKMapItem(placemark: MKPlacemark(coordinate: userCoord))
-                                let destination = wrapped.item
-                                
-                                // 这里直接用 RouteHelper 来算路线
-                                let request = MKDirections.Request()
-                                request.source = userMapItem
-                                request.destination = destination
-                                request.transportType = .walking
-                                
-                                let directions = MKDirections(request: request)
-                                directions.calculate { response, error in
-                                    guard let route = response?.routes.first else { return }
-                                    // 设置给我们的 @State:
-                                    currentRoute = route
-                                    
-                                    // 同时把 route 给 realTimeNavigator
-                                    realTimeNavigator.route = route
-                                    
-                                    // 收起 Sheet，或者保持打开都行
-                                    selectedItem = nil
-                                }
-                            }
-                    .presentationDetents([.medium])
-                    .presentationDragIndicator(.visible)
+                        MapItemDetailsView(item: wrapped.item, selectedItem: $selectedItem) {
+                            toNavigateItem = wrapped
+                            selectedItem = nil
+                        }
+                        .presentationBackgroundInteraction(.enabled)
+                        .presentationDetents([.medium])
                     }
-                
-                if realTimeNavigator.instruction != "No instruction" {
-                        Text(realTimeNavigator.instruction)
-                            .padding()
-                            .background(.thinMaterial)
-                            .cornerRadius(8)
-                            .padding(.top, 50)
-                    
-                        Spacer()
+                    .sheet(item: $toNavigateItem) { wrapped in
+                        if let start = locationManager.realCoordinate {
+                            AvailableRoutesView(start: start, end: wrapped.item, routes: $routesToShow, toNavigateItem: $toNavigateItem, region: $region, selectedRoute: $selectedRoute)
+                                .presentationBackgroundInteraction(.enabled)
+                                .presentationDetents([.medium, .large])
+                                .presentationDragIndicator(.visible)
+                                .onDisappear {
+                                    routesToShow = []
+                                }
+                        }
                     }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -101,7 +83,7 @@ struct InitiateNavigateView: View {
                                 }
                             }
                             .submitLabel(.search)
-
+                            
                             if targetSearch != "" {
                                 Button(action: {
                                     targetSearch = ""
@@ -165,20 +147,14 @@ struct InitiateNavigateView: View {
                         Text("Routes")
                             .font(.caption2)
                     }
-                    .frame(maxWidth: .infinity) // Changed from .greatestFiniteMagnitude to .infinity for better behavior
+                    .frame(maxWidth: .infinity)
                     .padding()
                 }
             }
             .enableAppleScrollBehavior()
             .background(.ultraThickMaterial)
-            // **Step 2: Observe changes to `selectedItem` and update the region accordingly**
-            .onReceive(locationManager.$rawLocation) { loc in
-                guard let loc = loc else { return }
-                // 把用户位置传给 realTimeNavigator，更新下一步提示
-                realTimeNavigator.updateLocation(loc)
-            }
-            .onChange(of: selectedItem) { newValue in
-                if let item = newValue {
+            .onChange(of: selectedItem) {
+                if let item = selectedItem {
                     // Update the map region to center on the selected POI's coordinate
                     updateRegion(with: item.item.placemark.coordinate)
                 }
@@ -224,6 +200,10 @@ struct InitiateNavigateView: View {
 struct MKMapItemWrapped: Identifiable, Equatable {
     let id = UUID()
     let item: MKMapItem
+    
+    static func == (lhs: MKMapItemWrapped, rhs: MKMapItemWrapped) -> Bool {
+        return lhs.item.identifier == rhs.item.identifier
+    }
 }
 
 // MARK: - MKMapView Wrapper
@@ -231,9 +211,9 @@ struct MKMapItemWrapped: Identifiable, Equatable {
 struct MapViewWrapper: UIViewRepresentable {
     @Binding var region: MKCoordinateRegion
     @Binding var selectedItem: MKMapItemWrapped?
+    @Binding var routesToShow: [MKRoute]
+    @Binding var toNavigateItem: MKMapItemWrapped?
     
-    @Binding var route: MKRoute?
-
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self, selectedItem: $selectedItem)
     }
@@ -256,34 +236,102 @@ struct MapViewWrapper: UIViewRepresentable {
         uiView.setRegion(region, animated: true)
         
         // 2) Synchronize selection from SwiftUI -> MapView
-        //    If SwiftUI’s selectedItem is nil, or differs from the last selection,
-        //    then we deselect all annotations.
-        let lastSelected = context.coordinator.lastSelectedItem
-        if selectedItem?.id != lastSelected?.id {
-            // Deselect everything
+        //    If toNavigateItem is not nil, select it and override any other selections
+        //    Else if selectedItem is not nil and differs from the last selection, select it
+        //    Else, deselect all annotations and remove programmatic annotations
+        
+        if let navigateItem = toNavigateItem {
+            // Override selection with toNavigateItem
+            selectAnnotation(for: navigateItem, in: uiView, context: context)
+        } else if let selected = selectedItem, selected.id != context.coordinator.lastSelectedItem?.id {
+            // Select the new selectedItem
+            selectAnnotation(for: selected, in: uiView, context: context)
+        } else if selectedItem == nil && toNavigateItem == nil {
+            // Deselect all annotations
             uiView.selectedAnnotations.forEach {
                 uiView.deselectAnnotation($0, animated: false)
             }
-            // Update the lastSelectedItem in the Coordinator to match SwiftUI’s new selection
-            context.coordinator.lastSelectedItem = selectedItem
+            
+            // Remove Programmatically Added Annotations
+            for annotation in context.coordinator.programmaticAnnotations {
+                uiView.removeAnnotation(annotation)
+            }
+            context.coordinator.programmaticAnnotations.removeAll()
+            
+            // Reset Last Selected Item
+            context.coordinator.lastSelectedItem = nil
         }
         
+        // 3) Remove existing overlays
         uiView.removeOverlays(uiView.overlays)
-        if let route = route {
-            uiView.addOverlay(route.polyline, level: .aboveRoads)
+        
+        // 4) Add new overlays (routes)
+        for route in routesToShow {
+            uiView.addOverlay(route.polyline)
+        }
+        
+        // 5) Set the firstPolyline in the Coordinator for rendering purposes
+        if let firstRoute = routesToShow.first {
+            context.coordinator.firstPolyline = firstRoute.polyline
+        } else {
+            context.coordinator.firstPolyline = nil
         }
     }
+    
+    /// Helper function to select an annotation based on MKMapItemWrapped
+    private func selectAnnotation(for mapItemWrapped: MKMapItemWrapped, in mapView: MKMapView, context: Context) {
+        // **Remove Existing Programmatically Added Annotations**
+        for annotation in context.coordinator.programmaticAnnotations {
+            mapView.removeAnnotation(annotation)
+        }
+        context.coordinator.programmaticAnnotations.removeAll()
+        
+        // **Deselect All Existing Annotations**
+        mapView.selectedAnnotations.forEach {
+            mapView.deselectAnnotation($0, animated: false)
+        }
+        
+        // **Find Matching Annotation Among Existing Annotations**
+        if let matchingAnnotation = mapView.annotations.first(where: { annotation in
+            let placemark = mapItemWrapped.item.placemark
+            return annotation.coordinate.latitude == placemark.coordinate.latitude &&
+            annotation.coordinate.longitude == placemark.coordinate.longitude &&
+            annotation.title == placemark.name
+        }) {
+            // **Select the Matching Annotation**
+            mapView.selectAnnotation(matchingAnnotation, animated: true)
+            context.coordinator.lastSelectedItem = mapItemWrapped
+        } else {
+            // **Add a New Programmatic Annotation**
+            let annotation = MKPointAnnotation()
+            annotation.coordinate = mapItemWrapped.item.placemark.coordinate
+            annotation.title = mapItemWrapped.item.name
+            mapView.addAnnotation(annotation)
+            mapView.selectAnnotation(annotation, animated: true)
+            
+            // **Track the Added Annotation**
+            context.coordinator.programmaticAnnotations.append(annotation)
+            context.coordinator.lastSelectedItem = mapItemWrapped
+        }
+    }
+    
+    // MARK: - Coordinator
     
     class Coordinator: NSObject, MKMapViewDelegate {
         var parent: MapViewWrapper
         
-        // We store the SwiftUI binding so we can set it when the user taps a POI
+        // Binding to selectedItem
         @Binding var selectedItem: MKMapItemWrapped?
         
-        // We also store our own “last selected item” so that `updateUIView`
-        // can detect whether SwiftUI’s selectedItem has changed.
+        // Tracks the last selected item to detect changes
         var lastSelectedItem: MKMapItemWrapped? = nil
-
+        
+        // **Tracks programmatically added annotations**
+        var programmaticAnnotations: [MKPointAnnotation] = []
+        
+        // Tracks the first polyline for styling
+        var firstPolyline: MKPolyline?
+        
         init(parent: MapViewWrapper, selectedItem: Binding<MKMapItemWrapped?>) {
             self.parent = parent
             self._selectedItem = selectedItem
@@ -322,13 +370,23 @@ struct MapViewWrapper: UIViewRepresentable {
             }
         }
         
+        // MARK: - Renderer for Overlays
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             guard let polyline = overlay as? MKPolyline else {
                 return MKOverlayRenderer(overlay: overlay)
             }
             let renderer = MKPolylineRenderer(polyline: polyline)
-            renderer.strokeColor = .systemBlue
-            renderer.lineWidth = 5
+            
+            if let first = firstPolyline, polyline === first {
+                // First MKRoute: Full Blue Color
+                renderer.strokeColor = .systemBlue
+                renderer.lineWidth = 8
+            } else {
+                // Other MKRoutes: Faded Blue Color
+                renderer.strokeColor = .systemBlue.withAlphaComponent(0.5)
+                renderer.lineWidth = 8
+            }
+            
             return renderer
         }
     }

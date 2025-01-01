@@ -26,10 +26,10 @@ struct MapItemDetailsView: View {
                 }
                 .accessibilityLabel("Close")
             }
-            Text("\(MapItemView.name(for: item.pointOfInterestCategory)) · \(item.placemark.locality ?? "")\(item.placemark.subLocality ?? "")")
+            Text("\(MapItemView.name(for: item.pointOfInterestCategory)) · \(item.placemark.locality ?? "") \(item.placemark.subLocality ?? "")")
                 .padding(.bottom, 8)
             
-            //MARK: "Walk" Button
+            // MARK: - "Walk" Button
             Button(action: {
                 onWalkButtonTapped?()
             }) {
