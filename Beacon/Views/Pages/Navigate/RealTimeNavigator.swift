@@ -110,7 +110,7 @@ class RealTimeNavigator: NSObject, ObservableObject {
                                            longitude: lastCoord.longitude)
         let distanceToEnd = location.distance(from: stepEndCLLocation)
         
-        // MARK: - NEW LOGIC BELOW (Solutions #1 and #3)
+        // MARK: - Advance to next step if needed
         // ---------------------------------------------------------
         //  A) If there's a "next step," check whether we're effectively *beyond* this step
         //     by comparing distance to next step's start OR measuring which polyline
@@ -192,14 +192,13 @@ class RealTimeNavigator: NSObject, ObservableObject {
         }
     }
     
-    // MARK: - Calculate Distance from the Current Step to the End
+    /// Calculate distance from current step to the end
     private func calculateRemainingDistance(from index: Int) -> Double {
         guard index < steps.count else { return 0.0 }
         let remainingSteps = steps[index...]
         return remainingSteps.reduce(0.0) { $0 + $1.distance }
     }
     
-    // MARK: - NEW HELPERS (Solution #1 & #3) ------------------
     /// Distance from the user’s location to the first coordinate (start) of a step.
     private func distanceToStartOfStep(from location: CLLocation, step: MKRoute.Step) -> CLLocationDistance {
         guard step.polyline.pointCount > 0 else {
