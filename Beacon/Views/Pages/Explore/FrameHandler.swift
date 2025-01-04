@@ -30,26 +30,36 @@ class FrameHandler: NSObject, ObservableObject {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             permissionGranted = true
-            sessionQueue.async { [unowned self] in
-                if !captureSessionReady {
+            sessionQueue.async { [weak self] in
+                guard let self = self else { return }
+                
+                if !self.captureSessionReady {
                     self.setupCaptureSession()
                 }
                 self.captureSession.startRunning()
                 print("Capture session started")
             }
+            
         case .notDetermined:
             requestPermissionAndStart()
+            
         default:
             permissionGranted = false
         }
     }
     
     func requestPermissionAndStart() {
-        AVCaptureDevice.requestAccess(for: .video) { [unowned self] granted in
-            permissionGranted = granted
+        AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+            guard let self = self else { return }
+            
+            self.permissionGranted = granted
             if granted {
-                sessionQueue.async { [unowned self] in
-                    self.setupCaptureSession()
+                self.sessionQueue.async { [weak self] in
+                    guard let self = self else { return }
+                    
+                    if !self.captureSessionReady {
+                        self.setupCaptureSession()
+                    }
                     self.captureSession.startRunning()
                 }
             }
@@ -57,11 +67,8 @@ class FrameHandler: NSObject, ObservableObject {
     }
     
     func stop() {
-        sessionQueue.async { [weak self] in
-            guard let self = self else { return }
-            if self.captureSession.isRunning {
-                self.captureSession.stopRunning()
-            }
+        if self.captureSession.isRunning {
+            self.captureSession.stopRunning()
         }
     }
     
@@ -77,9 +84,9 @@ class FrameHandler: NSObject, ObservableObject {
         guard let videoDevice = AVCaptureDevice.default(.builtInLiDARDepthCamera,
                                                         for: .video,
                                                         position: .back)
-                ?? AVCaptureDevice.default(.builtInDualWideCamera,
-                                           for: .video,
-                                           position: .back) else { return }
+            ?? AVCaptureDevice.default(.builtInDualWideCamera,
+                                       for: .video,
+                                       position: .back) else { return }
         
         guard let videoDeviceInput = try? AVCaptureDeviceInput(device: videoDevice),
               captureSession.canAddInput(videoDeviceInput) else { return }
@@ -96,6 +103,7 @@ class FrameHandler: NSObject, ObservableObject {
             return
         }
         captureSession.addOutput(videoOutput)
+        
         // Rotate video if needed
         videoOutput.connection(with: .video)?.videoRotationAngle = 90
         
@@ -110,7 +118,7 @@ class FrameHandler: NSObject, ObservableObject {
                connection.isVideoRotationAngleSupported(90) {
                 connection.videoRotationAngle = 90
             }
-            // Match rotation with video
+            // Match rotation with the video
             if let depthConnection = depthDataOutput.connection(with: .depthData),
                let videoConnection = videoOutput.connection(with: .video) {
                 depthConnection.videoRotationAngle = videoConnection.videoRotationAngle
@@ -137,9 +145,14 @@ extension FrameHandler: AVCaptureVideoDataOutputSampleBufferDelegate {
         
         guard let cgImage = imageFromSampleBuffer(sampleBuffer: sampleBuffer) else { return }
         
-        DispatchQueue.main.async { [unowned self] in
+        // Use [weak self] to avoid referencing a deallocated self
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             self.frame = cgImage
         }
+        
+        // Features handler should remain safe so long as self is alive here,
+        // but if you prefer extra caution:
         featuresHandler.action(model: self)
     }
     
@@ -166,8 +179,8 @@ extension FrameHandler: AVCaptureDepthDataOutputDelegate {
         
         guard let baseAddress = CVPixelBufferGetBaseAddress(depthBuffer)?
             .assumingMemoryBound(to: Float.self) else {
-            DispatchQueue.main.async {
-                self.minDepth = nil
+            DispatchQueue.main.async { [weak self] in
+                self?.minDepth = nil
             }
             return
         }
@@ -196,15 +209,16 @@ extension FrameHandler: AVCaptureDepthDataOutputDelegate {
             }
         }
         
+        // Update minDepth on main thread
         if minDepthValue == Float.greatestFiniteMagnitude {
-            DispatchQueue.main.async {
-                self.minDepth = nil
+            DispatchQueue.main.async { [weak self] in
+                self?.minDepth = nil
             }
             return
         }
         
-        DispatchQueue.main.async {
-            self.minDepth = minDepthValue
+        DispatchQueue.main.async { [weak self] in
+            self?.minDepth = minDepthValue
         }
     }
     
@@ -212,7 +226,8 @@ extension FrameHandler: AVCaptureDepthDataOutputDelegate {
                          didOutput depthData: AVDepthData,
                          timestamp: CMTime,
                          connection: AVCaptureConnection) {
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             self.latestDepthData = depthData
             self.updateMinDepth(with: depthData)
         }

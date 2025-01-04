@@ -5,11 +5,17 @@ import AVFoundation
 struct NavigateSessionView: View {
     @ObservedObject var locationManager: LocationManager = LocationManager()
     @ObservedObject var realTimeNavigator: RealTimeNavigator
+    @StateObject private var motionManager = MotionManager()
     
     private let synthesizer = AVSpeechSynthesizer()
+    @State private var player: AVAudioPlayer?
     @State private var lastWord = ""
     
+    // Sheet state
     @State private var endRouteSheet = false
+    
+    // Throttle timestamp
+    @State private var lastLocationUpdate: Date? = nil
     
     var selectedRoute: MKRoute
     var endRoute: () -> Void
@@ -23,17 +29,26 @@ struct NavigateSessionView: View {
     
     var body: some View {
         ZStack {
-            // MARK: - Map (Hidden from VoiceOver)
+            // MARK: - Map
             Map()
                 .accessibilityHidden(true) // Hides the map from VoiceOver
                 .onReceive(locationManager.$rawLocation) { loc in
                     guard let loc = loc else { return }
+                    
+                    let now = Date()
+                    if let lastUpdate = lastLocationUpdate, now.timeIntervalSince(lastUpdate) < 2 {
+                        // If less than 2 seconds since last update, skip
+                        return
+                    }
+                    
+                    // Otherwise, record and proceed
+                    lastLocationUpdate = now
                     realTimeNavigator.updateLocation(loc)
                     speak(realTimeNavigator.instruction)
                 }
             
             VStack {
-                // MARK: - Top Overlay (Subtitle and Title)
+                // MARK: - Top Overlay
                 VStack(alignment: .leading) {
                     // Subtitle
                     Text(realTimeNavigator.displaySubtitle)
@@ -57,7 +72,7 @@ struct NavigateSessionView: View {
                 
                 Spacer()
                 
-                // MARK: - Bottom Overlay (Arrival Time, Remaining Time, Distance)
+                // MARK: - Bottom Overlay
                 VStack {
                     HStack(spacing: 16) {
                         
@@ -113,7 +128,7 @@ struct NavigateSessionView: View {
             }
         }
         .sheet(isPresented: $endRouteSheet, onDismiss: { endRouteSheet = false }) {
-            // MARK: - Sheet for Ending the Navigation
+            // Sheet for Ending the Navigation
             VStack(alignment: .leading) {
                 HStack {
                     Text("Options")
@@ -154,6 +169,15 @@ struct NavigateSessionView: View {
         .onAppear {
             speak("Walking navigation started.")
         }
+        .fullScreenCover(isPresented: $motionManager.isHoldingUp) {
+            ExploreView()
+                .onAppear {
+                    playSound("explore.mp3")
+                }
+                .onDisappear {
+                    playSound("explore-closed.mp3")
+                }
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
@@ -165,6 +189,24 @@ struct NavigateSessionView: View {
             utterance.rate = AVSpeechUtteranceDefaultSpeechRate
             synthesizer.speak(utterance)
             lastWord = word
+        }
+    }
+    
+    // MARK: - Audio Hint
+    private func playSound(_ name: String) {
+        guard let path = Bundle.main.path(forResource: name, ofType: nil) else { return }
+        let url = URL(fileURLWithPath: path)
+
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try AVAudioSession.sharedInstance().setActive(true)
+            player = try AVAudioPlayer(contentsOf: url, fileTypeHint: AVFileType.mp3.rawValue)
+            guard let player = player else { return }
+
+            player.play()
+
+        } catch let error {
+            print(error.localizedDescription)
         }
     }
     
