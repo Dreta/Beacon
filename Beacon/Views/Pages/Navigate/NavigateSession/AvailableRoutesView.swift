@@ -53,6 +53,7 @@ struct AvailableRoutesView: View {
                         Text("Go")
                             .font(.title3)
                             .bold()
+                            .accessibilityLabel("Go with this route")
                             .padding(.all, 8)
                     }
                     .buttonStyle(BorderedProminentButtonStyle())

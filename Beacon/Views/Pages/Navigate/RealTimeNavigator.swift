@@ -3,88 +3,164 @@ import Combine
 import MapKit
 
 class RealTimeNavigator: NSObject, ObservableObject {
-    // 外部设置：用于存储当前要进行导航的整条路线
     var route: MKRoute? {
         didSet {
-            // 一旦新路线被设置，就把所有 steps 拿出来，回到第 0 步
+            // Reset steps and calculate totals
             if let r = route {
                 steps = r.steps
                 currentStepIndex = 0
                 instruction = steps.isEmpty ? "No route steps" : "Route loaded"
+                
+                // Calculate total distance and time
+                totalDistance = r.distance
+                totalTime = r.expectedTravelTime
+                distanceRemaining = r.distance
+                timeRemaining = r.expectedTravelTime
             } else {
                 steps = []
                 currentStepIndex = 0
                 instruction = "No route"
+                totalDistance = 0.0
+                totalTime = 0.0
+                distanceRemaining = 0.0
+                timeRemaining = 0.0
             }
         }
     }
     
-    // 用于输出当前的导航语句，由 SwiftUI 或者其他 UI 进行绑定显示
     @Published var instruction: String = "No instruction"
+    @Published var displayTitle: String = ""
+    @Published var displaySubtitle: String = ""
+    @Published var steps: [MKRoute.Step] = []
+    @Published var currentStepIndex: Int = 0
     
-    // 内部变量：所有导航步长（每一步对应地图上一次转弯或直行等操作）
-    private var steps: [MKRoute.Step] = []
-    // 当前正在执行第几个 step
-    private var currentStepIndex: Int = 0
+    @Published var totalDistance: Double = 0.0 // in meters
+    @Published var totalTime: TimeInterval = 0.0 // in seconds
+    @Published var distanceRemaining: Double = 0.0 // in meters
+    @Published var timeRemaining: TimeInterval = 0.0 // in seconds
     
-    // 自定义一个阈值，用于判断 “距离下一步转弯点” 多少米时，就切到下一步
-    // 你可以根据实际需要来调整这个数值
+    var currentStep: MKRoute.Step? {
+        guard currentStepIndex < steps.count else {
+            return nil
+        }
+        return steps[currentStepIndex]
+    }
+    
+    // A threshold to determine when to switch to the next step
     private let updateThreshold: CLLocationDistance = 5.0
     
-    // 距离格式化器，用于把“米”转换成更易读的字符串，比如 "20 m", "0.02 km" 等
     private let distanceFormatter: MKDistanceFormatter = {
         let df = MKDistanceFormatter()
-        df.unitStyle = .abbreviated // "km", "m", "ft", "mi" 等简写
+        df.unitStyle = .abbreviated
         return df
     }()
     
-    /// 当用户位置信息更新时，外部可以调用这个方法。
-    /// 内部会根据用户当前位置与下一步转弯点距离，动态更新 `instruction`.
+    var lastKnownLocation: CLLocation?
+    
+    // Update the instruction to speak and remaining metrics
     func updateLocation(_ location: CLLocation) {
-        // 如果已经超过了最后一个 step，说明导航结束
+        // Update distanceRemaining based on movement
+        if let lastLocation = lastKnownLocation {
+            let distanceTraveled = location.distance(from: lastLocation)
+            distanceRemaining = max(distanceRemaining - distanceTraveled, 0)
+            // Recalculate timeRemaining based on new distanceRemaining
+            if totalDistance > 0 {
+                timeRemaining = (distanceRemaining / totalDistance) * totalTime
+            } else {
+                timeRemaining = 0.0
+            }
+        }
+        
+        lastKnownLocation = location
+        
+        // If we've exhausted all steps, the user has arrived.
         guard currentStepIndex < steps.count else {
-            instruction = "Arrived"
+            instruction = "Arrived at your destination."
+            displaySubtitle = ""
+            displayTitle = "Arrived"
+            distanceRemaining = 0.0
+            timeRemaining = 0.0
             return
         }
         
-        let step = steps[currentStepIndex]
+        guard let step = currentStep else {
+            instruction = "Arrived at your destination."
+            displaySubtitle = ""
+            displayTitle = "Arrived"
+            distanceRemaining = 0.0
+            timeRemaining = 0.0
+            return
+        }
         
-        // 获取当前 step 的终点坐标。
-        // 注意：一般来说，如果想更精确，可以拿 polyline 的最后一个坐标作为终点。
+        // Distance from current location to the end of the step
+        let stepPoints = step.polyline.points()
         let count = step.polyline.pointCount
         guard count > 0 else {
-            instruction = "Arrived"
+            instruction = "Arrived at your destination."
+            displaySubtitle = ""
+            displayTitle = "Arrived"
+            distanceRemaining = 0.0
+            timeRemaining = 0.0
             return
         }
         
-        let stepPoints = step.polyline.points()
         let lastCoord = stepPoints[count - 1].coordinate
         let stepEndCLLocation = CLLocation(latitude: lastCoord.latitude,
                                            longitude: lastCoord.longitude)
-        
-        // 计算用户当前位置到该 step 终点的直线距离
         let distanceToEnd = location.distance(from: stepEndCLLocation)
         
-        // 如果已经接近或到达下一个转弯点
+        // If we're within a small threshold of the step’s end, advance to the next step.
         if distanceToEnd <= updateThreshold {
-            // 把当前 step 的指令输出，比如“Now Turn Right”
-            instruction = "Now " + (step.notice ?? step.instructions)
-            
-            // 准备切换到下一个 step
             currentStepIndex += 1
-            
-            if currentStepIndex < steps.count {
-                // 告诉用户下一步要做的事
-                instruction += "\nNext Step: \(steps[currentStepIndex].notice ?? steps[currentStepIndex].instructions)"
+            if currentStepIndex >= steps.count {
+                instruction = "Arrived at your destination."
+                displaySubtitle = ""
+                displayTitle = "Arrived"
+                distanceRemaining = 0.0
+                timeRemaining = 0.0
             } else {
-                // 导航结束
-                instruction = "Arrived"
+                // Announce the new step’s instruction right after switching
+                let nextStep = steps[currentStepIndex]
+                if nextStep.instructions.isEmpty {
+                    instruction = "Continue following the route."
+                    displaySubtitle = ""
+                    displayTitle = "Continue along the route."
+                } else {
+                    instruction = nextStep.instructions
+                    displaySubtitle = ""
+                    displayTitle = instruction
+                }
+                
+                // Recalculate distanceRemaining for remaining steps
+                distanceRemaining = calculateRemainingDistance(from: currentStepIndex)
+                // Recalculate timeRemaining based on new distanceRemaining
+                if totalDistance > 0 {
+                    timeRemaining = (distanceRemaining / totalDistance) * totalTime
+                } else {
+                    timeRemaining = 0.0
+                }
             }
-        } else {
-            // 尚未到转弯点
-            // 展示当前到下一步转弯还有多远，以及转弯/直行等下一步动作
-            let distanceStr = distanceFormatter.string(fromDistance: distanceToEnd)
-            instruction = "Move forward \(distanceStr), then \(step.instructions)"
+            return
         }
+        
+        // Otherwise, provide an in-progress instruction: "In xx m, [turn left]."
+        let distanceStr = distanceFormatter.string(fromDistance: distanceToEnd)
+        if step.instructions.isEmpty {
+            instruction = "Continue straight for \(distanceStr)"
+            displaySubtitle = "For \(distanceStr)"
+            displayTitle = "Continue straight"
+        } else {
+            instruction = "In \(distanceStr), \(step.instructions)"
+            displaySubtitle = "In \(distanceStr)"
+            displayTitle = step.instructions
+        }
+    }
+    
+    // Helper method to calculate remaining distance from current step onwards
+    private func calculateRemainingDistance(from index: Int) -> Double {
+        guard index < steps.count else { return 0.0 }
+        let remainingSteps = steps[index...]
+        let remainingDistance = remainingSteps.reduce(0.0) { $0 + $1.distance }
+        return remainingDistance
     }
 }

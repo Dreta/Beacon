@@ -163,9 +163,15 @@ struct InitiateNavigateView: View {
                 }
             }
             .fullScreenCover(isPresented: $inNavigation, content: {
-                if let selectedRoute = selectedRoute {
-                    NavigateSessionWrapper(route: selectedRoute)
-                        .id(selectedRoute)
+                if let route = selectedRoute {
+                    NavigateSessionWrapper(route: route, endRoute: {
+                        inNavigation = false
+                        selectedRoute = nil
+                        toNavigateItem = nil
+                        selectedItem = nil
+                        toNavigateItem = nil
+                    })
+                        .id(route)
                 }
             })
         } else {
