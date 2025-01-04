@@ -183,7 +183,7 @@ struct NavigateSessionView: View {
             
             // Otherwise update realTimeNavigator
             lastLocationUpdate = now
-            realTimeNavigator.updateLocation(loc)
+            realTimeNavigator.updateLocation(CLLocation(latitude: locationManager.realCoordinate!.latitude, longitude: locationManager.realCoordinate!.longitude))
             speak(realTimeNavigator.instruction)
         }
     }
