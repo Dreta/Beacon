@@ -39,6 +39,7 @@ class RealTimeNavigator: NSObject, ObservableObject {
     @Published var distanceRemaining: Double = 0.0 // in meters
     @Published var timeRemaining: TimeInterval = 0.0 // in seconds
     
+    // The current step, if any
     var currentStep: MKRoute.Step? {
         guard currentStepIndex < steps.count else {
             return nil
@@ -46,7 +47,7 @@ class RealTimeNavigator: NSObject, ObservableObject {
         return steps[currentStepIndex]
     }
     
-    // A threshold to determine when to switch to the next step
+    // Old threshold to decide if user is "close enough" to the step's endpoint
     private let updateThreshold: CLLocationDistance = 5.0
     
     private let distanceFormatter: MKDistanceFormatter = {
@@ -55,11 +56,12 @@ class RealTimeNavigator: NSObject, ObservableObject {
         return df
     }()
     
+    // Keep track of the user’s last known location
     var lastKnownLocation: CLLocation?
     
-    // Update the instruction to speak and remaining metrics
+    // MARK: - Core Update Logic
     func updateLocation(_ location: CLLocation) {
-        // Update distanceRemaining based on movement
+        // 1) Update distanceRemaining/timeRemaining
         if let lastLocation = lastKnownLocation {
             let distanceTraveled = location.distance(from: lastLocation)
             distanceRemaining = max(distanceRemaining - distanceTraveled, 0)
@@ -70,10 +72,9 @@ class RealTimeNavigator: NSObject, ObservableObject {
                 timeRemaining = 0.0
             }
         }
-        
         lastKnownLocation = location
         
-        // If we've exhausted all steps, the user has arrived.
+        // 2) If we've used up all steps, user is presumably at destination.
         guard currentStepIndex < steps.count else {
             instruction = "Arrived at your destination."
             displaySubtitle = ""
@@ -92,7 +93,7 @@ class RealTimeNavigator: NSObject, ObservableObject {
             return
         }
         
-        // Distance from current location to the end of the step
+        // 3) Distance from current location to the end of the current step
         let stepPoints = step.polyline.points()
         let count = step.polyline.pointCount
         guard count > 0 else {
@@ -109,41 +110,44 @@ class RealTimeNavigator: NSObject, ObservableObject {
                                            longitude: lastCoord.longitude)
         let distanceToEnd = location.distance(from: stepEndCLLocation)
         
-        // If we're within a small threshold of the step’s end, advance to the next step.
-        if distanceToEnd <= updateThreshold {
-            currentStepIndex += 1
-            if currentStepIndex >= steps.count {
-                instruction = "Arrived at your destination."
-                displaySubtitle = ""
-                displayTitle = "Arrived"
-                distanceRemaining = 0.0
-                timeRemaining = 0.0
-            } else {
-                // Announce the new step’s instruction right after switching
-                let nextStep = steps[currentStepIndex]
-                if nextStep.instructions.isEmpty {
-                    instruction = "Continue following the route."
-                    displaySubtitle = ""
-                    displayTitle = "Continue along the route."
-                } else {
-                    instruction = nextStep.instructions
-                    displaySubtitle = ""
-                    displayTitle = instruction
-                }
-                
-                // Recalculate distanceRemaining for remaining steps
-                distanceRemaining = calculateRemainingDistance(from: currentStepIndex)
-                // Recalculate timeRemaining based on new distanceRemaining
-                if totalDistance > 0 {
-                    timeRemaining = (distanceRemaining / totalDistance) * totalTime
-                } else {
-                    timeRemaining = 0.0
-                }
+        // MARK: - NEW LOGIC BELOW (Solutions #1 and #3)
+        // ---------------------------------------------------------
+        //  A) If there's a "next step," check whether we're effectively *beyond* this step
+        //     by comparing distance to next step's start OR measuring which polyline
+        //     we're closer to. If it looks like we've transitioned, advance the step now.
+        
+        if currentStepIndex + 1 < steps.count {
+            let nextStep = steps[currentStepIndex + 1]
+            
+            // A1) Compare distance to next step's start vs. current step's end
+            let distanceToNextStart = distanceToStartOfStep(from: location, step: nextStep)
+            // If you're clearly closer to next step's start than you are to the current step's end,
+            // it's likely you've passed the turn.
+            if distanceToNextStart + 5.0 < distanceToEnd {
+                // Advance to next step
+                advanceToNextStep()
+                return
             }
+            
+            // A2) Check if user is "off" the current step's polyline and "onto" the next step's
+            let distCurrentPolyline = minDistanceToPolyline(location, polyline: step.polyline)
+            let distNextPolyline    = minDistanceToPolyline(location, polyline: nextStep.polyline)
+            
+            // If you're significantly closer to the next step geometry, we assume you've turned.
+            if distNextPolyline + 20.0 < distCurrentPolyline {
+                advanceToNextStep()
+                return
+            }
+        }
+        // ---------------------------------------------------------
+        
+        // 4) Old logic: if within 'updateThreshold' of the step’s end, we move on.
+        if distanceToEnd <= updateThreshold {
+            advanceToNextStep()
             return
         }
         
-        // Otherwise, provide an in-progress instruction: "In xx m, [turn left]."
+        // 5) Otherwise, provide an "in-progress" instruction
         let distanceStr = distanceFormatter.string(fromDistance: distanceToEnd)
         if step.instructions.isEmpty {
             instruction = "Continue straight for \(distanceStr)"
@@ -156,11 +160,113 @@ class RealTimeNavigator: NSObject, ObservableObject {
         }
     }
     
-    // Helper method to calculate remaining distance from current step onwards
+    // MARK: - Advance to Next Step
+    private func advanceToNextStep() {
+        currentStepIndex += 1
+        if currentStepIndex >= steps.count {
+            // We’ve completed the route
+            instruction = "Arrived at your destination."
+            displaySubtitle = ""
+            displayTitle = "Arrived"
+            distanceRemaining = 0.0
+            timeRemaining = 0.0
+        } else {
+            // Announce the next step
+            let nextStep = steps[currentStepIndex]
+            if nextStep.instructions.isEmpty {
+                instruction = "Continue following the route."
+                displaySubtitle = ""
+                displayTitle = "Continue along the route."
+            } else {
+                instruction = nextStep.instructions
+                displaySubtitle = ""
+                displayTitle = instruction
+            }
+            // Recalculate distance/time remaining
+            distanceRemaining = calculateRemainingDistance(from: currentStepIndex)
+            if totalDistance > 0 {
+                timeRemaining = (distanceRemaining / totalDistance) * totalTime
+            } else {
+                timeRemaining = 0.0
+            }
+        }
+    }
+    
+    // MARK: - Calculate Distance from the Current Step to the End
     private func calculateRemainingDistance(from index: Int) -> Double {
         guard index < steps.count else { return 0.0 }
         let remainingSteps = steps[index...]
-        let remainingDistance = remainingSteps.reduce(0.0) { $0 + $1.distance }
-        return remainingDistance
+        return remainingSteps.reduce(0.0) { $0 + $1.distance }
+    }
+    
+    // MARK: - NEW HELPERS (Solution #1 & #3) ------------------
+    /// Distance from the user’s location to the first coordinate (start) of a step.
+    private func distanceToStartOfStep(from location: CLLocation, step: MKRoute.Step) -> CLLocationDistance {
+        guard step.polyline.pointCount > 0 else {
+            return Double.greatestFiniteMagnitude
+        }
+        let firstCoord = step.polyline.points()[0].coordinate
+        let firstCL = CLLocation(latitude: firstCoord.latitude, longitude: firstCoord.longitude)
+        return location.distance(from: firstCL)
+    }
+    
+    /// Minimum distance from user’s location to any segment in the polyline.
+    private func minDistanceToPolyline(_ location: CLLocation, polyline: MKPolyline) -> CLLocationDistance {
+        let points = polyline.points()
+        let count = polyline.pointCount
+        guard count > 1 else {
+            // If zero points, can’t measure
+            if count == 1 {
+                let coord = points[0].coordinate
+                return location.distance(from: CLLocation(latitude: coord.latitude, longitude: coord.longitude))
+            }
+            return Double.greatestFiniteMagnitude
+        }
+        
+        var minDistance = Double.greatestFiniteMagnitude
+        for i in 0..<(count - 1) {
+            let startCoord = points[i].coordinate
+            let endCoord   = points[i + 1].coordinate
+            let segmentDistance = distanceFromLocationToLineSegment(
+                location: location,
+                start: startCoord,
+                end: endCoord
+            )
+            minDistance = min(minDistance, segmentDistance)
+        }
+        
+        return minDistance
+    }
+    
+    /// Distance from the user’s location to a single line segment [start, end].
+    private func distanceFromLocationToLineSegment(location: CLLocation,
+                                                   start: CLLocationCoordinate2D,
+                                                   end: CLLocationCoordinate2D) -> CLLocationDistance {
+        let locPoint   = MKMapPoint(location.coordinate)
+        let startPoint = MKMapPoint(start)
+        let endPoint   = MKMapPoint(end)
+        
+        let lineLenSquared = (startPoint.x - endPoint.x)*(startPoint.x - endPoint.x)
+                           + (startPoint.y - endPoint.y)*(startPoint.y - endPoint.y)
+        if lineLenSquared == 0 {
+            // start & end are the same point
+            return location.distance(from: CLLocation(latitude: start.latitude, longitude: start.longitude))
+        }
+        
+        // Dot product to find the projection of loc onto the segment
+        let t = max(0, min(
+            1,
+            ((locPoint.x - startPoint.x)*(endPoint.x - startPoint.x)
+             + (locPoint.y - startPoint.y)*(endPoint.y - startPoint.y))
+             / lineLenSquared
+        ))
+        
+        // Projection point
+        let projX = startPoint.x + t * (endPoint.x - startPoint.x)
+        let projY = startPoint.y + t * (endPoint.y - startPoint.y)
+        let projPoint = MKMapPoint(x: projX, y: projY)
+        
+        let projCoord = projPoint.coordinate
+        return location.distance(from: CLLocation(latitude: projCoord.latitude, longitude: projCoord.longitude))
     }
 }

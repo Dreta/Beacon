@@ -171,7 +171,7 @@ struct NavigateSessionView: View {
         
         // MARK: - Throttle location updates and realTimeNavigator
         .onReceive(locationManager.$rawLocation) { loc in
-            guard let loc = loc else { return }
+            if loc == nil { return }
             currentLocation = locationManager.realCoordinate
             
             let now = Date()
