@@ -9,6 +9,7 @@ struct AvailableRoutesView: View {
     @Binding var toNavigateItem: MKMapItemWrapped?
     @Binding var region: MKCoordinateRegion
     @Binding var selectedRoute: MKRoute?
+    @Binding var inNavigation: Bool
     
     var body: some View {
         VStack(alignment: .leading) {
@@ -45,6 +46,9 @@ struct AvailableRoutesView: View {
                     Spacer()
                     Button(action: {
                         selectedRoute = route
+                        toNavigateItem = nil
+                        routes = []
+                        inNavigation = true
                     }) {
                         Text("Go")
                             .font(.title3)
@@ -56,7 +60,8 @@ struct AvailableRoutesView: View {
                     .frame(maxHeight: .infinity)
                 }
             }
-            .ignoresSafeArea(.all)
+            .listStyle(PlainListStyle())
+            .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -177,7 +182,7 @@ struct AvailableRoutesView: View {
     }
 }
 
-extension CLLocationCoordinate2D: Equatable {
+extension CLLocationCoordinate2D: @retroactive Equatable {
     public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
         return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
     }

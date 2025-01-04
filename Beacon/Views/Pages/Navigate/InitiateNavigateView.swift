@@ -11,6 +11,8 @@ struct InitiateNavigateView: View {
     
     @State private var toNavigateItem: MKMapItemWrapped?
     @State private var routesToShow: [MKRoute] = []
+    
+    @State private var inNavigation = false
     @State private var selectedRoute: MKRoute?
     
     @FocusState private var searchFocused
@@ -23,10 +25,7 @@ struct InitiateNavigateView: View {
     @State private var bottomSheetPosition: BottomSheetPosition = .relativeBottom(0.2)
     
     var body: some View {
-        if let selectedRoute = selectedRoute {
-            NavigateSessionWrapper(route: selectedRoute)
-                .id(selectedRoute)
-        } else if let coordinate = locationManager.realCoordinate {
+       if let coordinate = locationManager.realCoordinate {
             ZStack(alignment: .top) {
                 MapViewWrapper(region: $region, selectedItem: $selectedItem, routesToShow: $routesToShow, toNavigateItem: $toNavigateItem)
                     .ignoresSafeArea()
@@ -47,7 +46,7 @@ struct InitiateNavigateView: View {
                     }
                     .sheet(item: $toNavigateItem) { wrapped in
                         if let start = locationManager.realCoordinate {
-                            AvailableRoutesView(start: start, end: wrapped.item, routes: $routesToShow, toNavigateItem: $toNavigateItem, region: $region, selectedRoute: $selectedRoute)
+                            AvailableRoutesView(start: start, end: wrapped.item, routes: $routesToShow, toNavigateItem: $toNavigateItem, region: $region, selectedRoute: $selectedRoute, inNavigation: $inNavigation)
                                 .presentationBackgroundInteraction(.enabled)
                                 .presentationDetents([.medium, .large])
                                 .presentationDragIndicator(.visible)
@@ -163,6 +162,12 @@ struct InitiateNavigateView: View {
                     updateRegion(with: item.item.placemark.coordinate)
                 }
             }
+            .fullScreenCover(isPresented: $inNavigation, content: {
+                if let selectedRoute = selectedRoute {
+                    NavigateSessionWrapper(route: selectedRoute)
+                        .id(selectedRoute)
+                }
+            })
         } else {
             VStack {
                 Text("To use Navigate, please allow location access in Settings.")
