@@ -17,6 +17,9 @@ struct NavigateSessionView: View {
     // Throttle timestamp
     @State private var lastLocationUpdate: Date? = nil
     
+    // Track the current user location here
+    @State private var currentLocation: CLLocationCoordinate2D? = nil
+    
     var selectedRoute: MKRoute
     var endRoute: () -> Void
     
@@ -29,35 +32,20 @@ struct NavigateSessionView: View {
     
     var body: some View {
         ZStack {
-            // MARK: - Map
-            Map()
-                .accessibilityHidden(true) // Hides the map from VoiceOver
-                .onReceive(locationManager.$rawLocation) { loc in
-                    guard let loc = loc else { return }
-                    
-                    let now = Date()
-                    if let lastUpdate = lastLocationUpdate, now.timeIntervalSince(lastUpdate) < 2 {
-                        // If less than 2 seconds since last update, skip
-                        return
-                    }
-                    
-                    // Otherwise, record and proceed
-                    lastLocationUpdate = now
-                    realTimeNavigator.updateLocation(loc)
-                    speak(realTimeNavigator.instruction)
-                }
-            
+            // MARK: - UIKit MapView Wrapper
+            RouteMapView(route: selectedRoute,
+                         userLocation: $currentLocation)
+                .accessibilityHidden(true)
+
             VStack {
                 // MARK: - Top Overlay
                 VStack(alignment: .leading) {
-                    // Subtitle
                     Text(realTimeNavigator.displaySubtitle)
                         .font(.headline)
                         .foregroundColor(.gray)
                         .transition(.move(edge: .top))
                         .id("Subtitle\(realTimeNavigator.displaySubtitle)")
                     
-                    // Title
                     Text(realTimeNavigator.displayTitle)
                         .font(.title)
                         .foregroundColor(.white)
@@ -112,9 +100,9 @@ struct NavigateSessionView: View {
                         Spacer()
                         
                         // More Options Button
-                        Button(action: {
+                        Button {
                             endRouteSheet = true
-                        }) {
+                        } label: {
                             Image(systemName: "chevron.up.circle.fill")
                                 .font(.system(size: 24))
                                 .foregroundColor(Color(.secondaryLabel))
@@ -128,7 +116,7 @@ struct NavigateSessionView: View {
             }
         }
         .sheet(isPresented: $endRouteSheet, onDismiss: { endRouteSheet = false }) {
-            // Sheet for Ending the Navigation
+            // MARK: - Sheet for Ending the Navigation
             VStack(alignment: .leading) {
                 HStack {
                     Text("Options")
@@ -169,6 +157,7 @@ struct NavigateSessionView: View {
         .onAppear {
             speak("Walking navigation started.")
         }
+        // Present ExploreView if user holds phone up
         .fullScreenCover(isPresented: $motionManager.isHoldingUp) {
             ExploreView()
                 .onAppear {
@@ -179,6 +168,24 @@ struct NavigateSessionView: View {
                 }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        
+        // MARK: - Throttle location updates and realTimeNavigator
+        .onReceive(locationManager.$rawLocation) { loc in
+            guard let loc = loc else { return }
+            currentLocation = locationManager.realCoordinate
+            
+            let now = Date()
+            if let lastUpdate = lastLocationUpdate,
+               now.timeIntervalSince(lastUpdate) < 2 {
+                // Skip if less than 2s
+                return
+            }
+            
+            // Otherwise update realTimeNavigator
+            lastLocationUpdate = now
+            realTimeNavigator.updateLocation(loc)
+            speak(realTimeNavigator.instruction)
+        }
     }
     
     // MARK: - Speech
@@ -192,7 +199,7 @@ struct NavigateSessionView: View {
         }
     }
     
-    // MARK: - Audio Hint
+    // MARK: - Audio
     private func playSound(_ name: String) {
         guard let path = Bundle.main.path(forResource: name, ofType: nil) else { return }
         let url = URL(fileURLWithPath: path)
@@ -202,10 +209,8 @@ struct NavigateSessionView: View {
             try AVAudioSession.sharedInstance().setActive(true)
             player = try AVAudioPlayer(contentsOf: url, fileTypeHint: AVFileType.mp3.rawValue)
             guard let player = player else { return }
-
             player.play()
-
-        } catch let error {
+        } catch {
             print(error.localizedDescription)
         }
     }
@@ -239,5 +244,51 @@ struct NavigateSessionView: View {
         }
         
         return formatter.string(from: measurement)
+    }
+}
+
+
+struct RouteMapView: UIViewRepresentable {
+    var route: MKRoute
+    @Binding var userLocation: CLLocationCoordinate2D?
+
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView()
+        
+        // We want to follow the user location with heading (so the map orients to user facing direction).
+        mapView.userTrackingMode = .followWithHeading
+        mapView.showsUserLocation = true
+        mapView.delegate = context.coordinator
+        
+        // Add the route overlay
+        mapView.addOverlay(route.polyline)
+        
+        return mapView
+    }
+
+    func updateUIView(_ uiView: MKMapView, context: Context) {
+        guard let location = userLocation else { return }
+
+        let coordinate = location
+        let span = MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+        let region = MKCoordinateRegion(center: coordinate, span: span)
+        uiView.setRegion(region, animated: true)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+    
+    class Coordinator: NSObject, MKMapViewDelegate {
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            // If it's the polyline for the route, render it with a line.
+            if let polyline = overlay as? MKPolyline {
+                let renderer = MKPolylineRenderer(polyline: polyline)
+                renderer.strokeColor = .systemBlue
+                renderer.lineWidth = 12
+                return renderer
+            }
+            return MKOverlayRenderer(overlay: overlay)
+        }
     }
 }
