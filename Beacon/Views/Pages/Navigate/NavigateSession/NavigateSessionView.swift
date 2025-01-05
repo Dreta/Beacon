@@ -170,9 +170,8 @@ struct NavigateSessionView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         
         // MARK: - Throttle location updates and realTimeNavigator
-        .onReceive(locationManager.$rawLocation) { loc in
-            if loc == nil { return }
-            currentLocation = locationManager.realCoordinate
+        .onReceive(locationManager.$realCoordinate) { loc in
+            guard let currentLocation = locationManager.realCoordinate else { return }
             
             let now = Date()
             if let lastUpdate = lastLocationUpdate,
@@ -183,7 +182,7 @@ struct NavigateSessionView: View {
             
             // Otherwise update realTimeNavigator
             lastLocationUpdate = now
-            realTimeNavigator.updateLocation(CLLocation(latitude: locationManager.realCoordinate!.latitude, longitude: locationManager.realCoordinate!.longitude))
+            realTimeNavigator.updateLocation(CLLocation(latitude: currentLocation.latitude, longitude: currentLocation.longitude))
             speak(realTimeNavigator.instruction)
         }
     }
